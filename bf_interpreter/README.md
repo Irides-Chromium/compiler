@@ -6,39 +6,39 @@
 
 [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck) is one of the many [esoteric programmming languages](https://en.wikipedia.org/wiki/Esoteric_programming_language). Defined by wiki, these languages are to test the boundaries of computers. Brainfuck comes from the slang "Brain fuck", which refers to things so complicated or unusual that they exceed the limits of one's understanding. This is true because of the only 8 operators in brainfuck. A brainfuck program consists of a long (default 30000) array initialized to zero, a data pointer initialized to zero, and the 8 operators. When working, the BF program is just like a Turing Machine. The operators are mentioned below:
 
-1.  `>`  Increment the data pointer (to point to the cell to the right).
+1.  <kbd>></kbd>  Increment the data pointer (to point to the cell to the right).
 
-2.  `<`  Decrement the data pointer (to point to the cell to the left).
+2.  <kbd><</kbd>  Decrement the data pointer (to point to the cell to the left).
 
-3.  `+`  Increment the byte at the data pointer.
+3.  <kbd>+</kbd>  Increment the byte at the data pointer.
 
-4.  `-`  Decrement the byte at the data pointer.
+4.  <kbd>-</kbd>  Decrement the byte at the data pointer.
 
-5.  `.`  Output the byte at the data pointer.
+5.  <kbd>.</kbd>  Output the byte at the data pointer.
 
-6.  `,`  Accept one byte of input, storing its value in the byte at the data pointer.
+6.  <kbd>,</kbd>  Accept one byte of input, storing its value in the byte at the data pointer.
 
-7.  `[`  If the byte at the data pointer is zero, then instead of moving the instruction pointer forward to the next command, jump it forward to the command after the matching `]` command.
+7.  <kbd>[</kbd>  If the byte at the data pointer is zero, then instead of moving the instruction pointer forward to the next command, jump it forward to the command after the matching `]` command.
 
-8.  `]`  If the byte at the data pointer is nonzero, then instead of moving the instruction pointer forward to the next command, jump it back to the command after the matching `]` command.
+8.  <kbd>]</kbd>  If the byte at the data pointer is nonzero, then instead of moving the instruction pointer forward to the next command, jump it back to the command after the matching `]` command.
 
 (Come from the brainfuck manual page)
 
 There are also some extended operators:
 
-9.  `#`  The debug operator, prints the values of 20 cell values, 10 before the data pointer, 10 after.
+9.  <kbd>#</kbd>  The debug operator, prints the values of 20 cell values, 10 before the data pointer, 10 after.
 
-10. `(`  Defines a function (in the [pbrain](http://www.parkscomputing.com/2014/04/pbrain/) extension), whose name is the value in the current cell.
+10. <kbd>(</kbd>  Defines a function (in the [pbrain](http://www.parkscomputing.com/2014/04/pbrain/) extension), whose name is the value in the current cell.
 
-11. `)`  Ends the definition of the function.
+11. <kbd>)</kbd>  Ends the definition of the function.
 
-12. `:`  Calls the function whose name is the value in the current cell.
+12. <kbd>:</kbd>  Calls the function whose name is the value in the current cell.
 
-13. `=`  Quit the program with the value in the current cell.
+13. <kbd>=</kbd>  Quit the program with the value in the current cell.
 
-14. `!`  Save the current tape to file.
+14. <kbd>!</kbd>  Save the current tape to file.
 
-15. `?`  Load the tape from the file.
+15. <kbd>?</kbd>  Load the tape from the file.
 
 And another extention uses numbers to reduce the number of operators used. For example, use `5+` instead of `+++++`
 
