@@ -18,9 +18,9 @@
 
 6.  <kbd>,</kbd>  Accept one byte of input, storing its value in the byte at the data pointer.
 
-7.  <kbd>[</kbd>  If the byte at the data pointer is zero, then instead of moving the instruction pointer forward to the next command, jump it forward to the command after the matching `]` command.
+7.  <kbd>[</kbd>  If the byte at the data pointer is zero, then instead of moving the instruction pointer forward to the next command, jump it forward to the command after the matching <kbd>]</kbd> command.
 
-8.  <kbd>]</kbd>  If the byte at the data pointer is nonzero, then instead of moving the instruction pointer forward to the next command, jump it back to the command after the matching `]` command.
+8.  <kbd>]</kbd>  If the byte at the data pointer is nonzero, then instead of moving the instruction pointer forward to the next command, jump it back to the command after the matching <kbd>]</kbd> command.
 
 (Come from the brainfuck manual page)
 
