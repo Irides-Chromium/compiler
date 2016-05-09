@@ -37,7 +37,7 @@ def putchar(char):
 
 class bf_prog:
 
-    tape_size = 4096
+    tape_size = 30000
 
     def __init__(self):
         self.input_stream = ""
