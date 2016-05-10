@@ -1,9 +1,25 @@
 #!/usr/bin/python3
 
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2 of the License, or (at your
+# option) any later version.
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+# Public License for more details.
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
 import time
 import sys
 
+CL_S = 256          # cell size
+TP_S = 30000        # tape size
+
 def run_console():
+    print("Brainfuck Interpreter 1.0.2 (with pbrain)")
     print("Use # to inspect tape")
     environment = bf_prog()
     while True:
@@ -25,26 +41,17 @@ def run_file(filename):
         instruction = bf_inst(file.read())
         instruction.execute(environment)
 
-def getchar():
-    if len(input_stream) == 0:
-        input_stream += input()
-    temp = input_stream[0]
-    input_stream = input_stream[1:]
-    return ord(temp)
-
-def putchar(char):
-    print(chr(char), end='')
-
 class bf_prog:
-
-    tape_size = 30000
 
     def __init__(self):
         self.input_stream = ""
-        self.regs_tape = []
-        self.RP = 0              # Register Pointer
-        for i in range(bf_prog.tape_size):
-            self.regs_tape.append(0)
+        self.regs_tape = []               # Register tape (paper tape)
+        self.RP = 0                       # Register Pointer
+        self.func_tape = []               # Function tape (for '(' ')' ':'
+        for i in range(CL_S):
+            self.func_tape.append(None)   # Initialize function tape
+        for i in range(TP_S):
+            self.regs_tape.append(0)      # Initialize register tape
 
     def __str__(self):
         return '(' + ', '.join((str(self.RP), str(self.cur_val()))) + ')'
@@ -54,22 +61,26 @@ class bf_prog:
 
     def add(self, value):
         self.regs_tape[self.RP] += value
-        self.regs_tape[self.RP] %= 256
+        self.regs_tape[self.RP] %= CL_S
 
     def move(self, diff):
         self.RP += diff
         if self.RP < 0:
             sys.exit("error: tape memory out of bounds (underrun)\n\
-                      undershot the tape size of 30000 cells")
-        if self.RP > self.tape_size:
+                      undershot the tape size of " + TP_S + " cells.")
+        if self.RP > TP_S:
             sys.exit("error: tape memory out of bounds (underrun)\n\
-                      undershot the tape size of 30000 cells")
+                      undershot the tape size of " + TP_S + " cells.")
 
     def handle_input(self):
-        self.regs_tape[self.RP] = getchar()
+        if len(self.input_stream) == 0:
+            self.input_stream += input()
+        temp = self.input_stream[0]
+        self.input_stream = self.input_stream[1:]
+        self.regs_tape[self.RP] = ord(temp)
 
     def handle_output(self):
-        putchar(self.regs_tape[self.RP])
+        print(chr(self.regs_tape[self.RP]), end='')
 
 class bf_loop:
     
@@ -83,7 +94,7 @@ class bf_loop:
         self.loop_end = end
         self.paired = True
 
-    def may_match(self, level, index):
+    def match(self, level, index):
         level_match = self.level == level
         start_first = self.loop_start < index
         return level_match and not self.paired and start_first
@@ -95,34 +106,49 @@ class bf_inst:
 
     def __init__(self, tape):
         self.inst_tape = tape
-        self.loop_tape = []      # Storing the loop objects
-        self.IP = 0              # Instruction Pointer
-        self.search_loop()
+        self.loop_tape = []         # Storing the loop objects
+        self.fdef_tape = []         # Function definition tape
+        self.IP = 0                 # Instruction Pointer
+        self.search_loop()          # Store the loop pairs for future use
 
     def __str__(self):
         return self.inst_tape
 
     def search_loop(self):
         ptr = 0
-        level = 0
+        loop_level = 0
+        fdef_level = 0
         for ptr in range(len(self.inst_tape)):
             if self.inst_tape[ptr] == '[':
-                self.loop_tape.append(bf_loop(level, ptr))
-                level += 1
+                self.loop_tape.append(bf_loop(loop_level, ptr))
+                loop_level += 1
             elif self.inst_tape[ptr] == ']':
-                level -= 1
+                loop_level -= 1
                 paired = False
                 for loop in self.loop_tape:
-                    if loop.may_match(level, ptr):
+                    if loop.match(loop_level, ptr):
                         loop.set_end(ptr)
                         paired = True
                         break
                 if not paired:
-                    #print("level, *ptr, paired:", level, self.inst_tape[ptr], paired)
-                    #for loop in self.loop_tape:
-                        #print(loop)
                     raise Exception("Loop end \"]\" not paired.")
+            elif self.inst_tape[ptr] == '(':
+                self.fdef_tape.append(bf_loop(fdef_level, ptr))
+                fdef_level += 1
+            elif self.inst_tape[ptr] == ')':
+                fdef_level -= 1
+                paired = False
+                for loop in self.fdef_tape:
+                    if loop.match(fdef_level, ptr):
+                        loop.set_end(ptr)
+                        paired = True
+                        break
+                if not paired:
+                    raise Exception("Function definition \")\" not ended.")
 
+        for loop in self.fdef_tape:
+            if not loop.paired:
+                raise Exception("Loop not paired.")
         for loop in self.loop_tape:
             if not loop.paired:
                 raise Exception("Loop not paired.")
@@ -169,22 +195,47 @@ class bf_inst:
                         start = loop.loop_start
                         end = loop.loop_end
                         break
+                self.IP = end
                 if env.cur_val() != 0:
-                    self.IP = end
-                    #print("end:", self.inst_tape[self.IP])
                     inst = bf_inst(self.inst_tape[start + 1:end])
                     while env.cur_val() != 0:
                         inst.execute(env)
-                        #print("inst:", inst)
-                    #print("regs:", env)
+
+            elif char == '(':
+                start = 0
+                end = 0
+                for loop in self.fdef_tape:
+                    if loop.loop_start == self.IP:
+                        start = loop.loop_start
+                        end = loop.loop_end
+                        break
+                self.IP = end
+                name = env.cur_val()
+                env.func_tape[name] = bf_inst(self.inst_tape[start + 1:end])
+
+            elif char == ':':
+                name = env.cur_val()
+                if not env.func_tape[name]:
+                    raise Exception("There is no such " + \
+                            "function (procedure).\n" + \
+                            "Function (procedure) reference " +  \
+                            "(name) is: " + str(name))
+                env.func_tape[name].execute(env)
+
+            elif char in '])':
+                for loop in self.loop_tape:
+                    print(loop)
+                raise Exception("LOOP END ENCOUNTERED: at " + str(self.IP) \
+                        + "\n" + self.inst_tape[self.IP - 5:self.IP + 6] \
+                        + "\n" + "   ^")
 
             elif char == '#':
                 low = env.RP - 10
                 if env.RP < 10:
                     low = 0
                 high = low + 20
-                if env.RP + 10 > bf_prog.tape_size:
-                    high = 4095
+                if env.RP + 10 > TP_S:
+                    high = TP_S - 1
                 for index in range(low, high):
                     print("%03d " % index, end='')
                 print()
@@ -197,9 +248,6 @@ class bf_inst:
                     else:
                         print("    ", end='')
                 print()
-
-            elif char == ']':
-                raise Exception("LOOP END ENCOUNTERED")
 
             self.IP += 1
 
