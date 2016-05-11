@@ -14,6 +14,7 @@
 
 import time
 import sys
+import get_options
 
 CL_S = 256          # cell size
 TP_S = 30000        # tape size
@@ -42,6 +43,8 @@ def run_file(filename):
         instruction.execute(environment)
 
 class bf_prog:
+    """The environment or context used by the BF program.
+    Created only once in every file or console."""
 
     def __init__(self):
         self.input_stream = ""
@@ -83,6 +86,8 @@ class bf_prog:
         print(chr(self.regs_tape[self.RP]), end='')
 
 class bf_loop:
+    """Class for matching '[' ']' and '(' ')'s.
+    Not necessarily used for loops."""
     
     def __init__(self, level, start):
         self.loop_start = start
@@ -103,6 +108,9 @@ class bf_loop:
         return '(' + ', '.join((str(self.loop_start), str(self.loop_end), str(self.level), str(self.paired))) + ')'
 
 class bf_inst:
+    """Represent one string of instruction in the program.
+    When encounter loops and definitions, use a new instruction instead.
+    Jump to the next byte (operator) after the loop or definition."""
 
     def __init__(self, tape):
         self.inst_tape = tape
@@ -132,6 +140,7 @@ class bf_inst:
                         break
                 if not paired:
                     raise Exception("Loop end \"]\" not paired.")
+
             elif self.inst_tape[ptr] == '(':
                 self.fdef_tape.append(bf_loop(fdef_level, ptr))
                 fdef_level += 1
@@ -217,8 +226,8 @@ class bf_inst:
                 name = env.cur_val()
                 if not env.func_tape[name]:
                     raise Exception("There is no such " + \
-                            "function (procedure).\n" + \
-                            "Function (procedure) reference " +  \
+                            "procedure.\n" + \
+                            "Procedure reference " + \
                             "(name) is: " + str(name))
                 env.func_tape[name].execute(env)
 
