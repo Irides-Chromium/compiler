@@ -274,6 +274,8 @@ class bf_inst:
                 env.set_reg()
             elif char == '!':
                 env.ext_reg()
+            elif char == '=':
+                sys.exit(env.cur_val())
 
             self.IP += 1
 
