@@ -54,8 +54,12 @@ I made the interpreter using the most original features, as mentioned below:
 
 1. Each cell uses one byte (0 ~ 255).
 2. The length of the tape is 30000.
+3. the `#` debug extension.
 
-And the `#` debug extension.
+And other extensions:
+
+1. Added a temporary registor, use <kbd>@</kbd> to store the byte under the pointer to the register, use <kbd>!</kbd> to add the value in the register to the byte under the pointer.
+2. Use <kbd>=</kbd> to quit the program with the value of the byte under the pointer.
 
 ## Usage
 
