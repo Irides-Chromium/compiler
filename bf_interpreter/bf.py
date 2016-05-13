@@ -14,14 +14,9 @@
 
 import time
 import sys
+from get_options import read_opts
 
-CL_S = 256          # Cell size
-TP_S = 30000        # Tape size
-CL_W = True         # Cell wrap
-TP_W = False        # Tape wrap
-TM_R = False        # Temp regs
-DB_T = False        # Double tape
-RP_M = False        # Repeat macro
+CL_S, TP_S, TP_W, TM_R, DB_T, RP_M, EX_Q = read_opts()
 
 def run_console():
     print("Brainfuck Interpreter 1.0.2 (with pbrain)")
@@ -31,8 +26,7 @@ def run_console():
         try:
             bf_inst(input(">>> ")).execute(environment)
         except (EOFError, KeyboardInterrupt):
-            print()
-            sys.exit(1)
+            sys.exit(print())
 
 def run_file(filename):
     try:
@@ -51,7 +45,7 @@ class bf_prog:
         self.input_stream = ""
         self.RT = []                    # Register tape (paper tape)
         self.RP = 0                     # Register Pointer
-        self.func_tape = []             # Function tape (for '(' ')' ':'
+        self.func_tape = []             # Function tape (for '(' ')' ':')
         self.reg = 0                    # Temporary register
         for i in range(CL_S):
             self.func_tape.append(None) # Initialize function tape
@@ -172,6 +166,7 @@ class bf_inst:
         while self.IP < len(self.IT):
             char = self.IT[self.IP]
             diff = 0
+            #print(char, char.isdigit())
             if char in '-+':
                 while (self.IP < len(self.IT) and self.IT[self.IP] in '-+'):
                     char = self.IT[self.IP]
@@ -231,10 +226,10 @@ class bf_inst:
                 low = 0 if env.RP < 10 else env.RP - 10
                 high = TP_S - 1 if env.RP + 10 > TP_S else low + 20
                 for index in range(low, high):
-                    print("% 3d " % index, end='')
+                    print("%3d " % index, end='')
                 print()
                 for index in range(low, high):
-                    print("% 3d " % env.RT[index], end='')
+                    print("%3d " % env.RT[index], end='')
                 print()
                 for index in range(low, high):
                     if index == env.RP:
@@ -243,14 +238,38 @@ class bf_inst:
                         print("    ", end='')
                 print()
 
+            elif RP_M and char.isdigit():
+                temp = ""
+                while (self.IP < len(self.IT) and \
+                        self.IT[self.IP].isdigit()):
+                    temp += self.IT[self.IP]
+                    self.IP += 1
+                diff = int(temp)
+                char = self.IT[self.IP]
+                if char == '+':
+                    env.add(diff)
+                elif char == '-':
+                    env.add(-diff)
+                elif char == '<':
+                    env.move(-diff)
+                elif char == '>':
+                    env.move(diff)
+                elif char == ',':
+                    for i in range(diff):
+                        env.handle_input()
+                elif char == '.':
+                    for i in range(diff):
+                        env.handle_output()
+
             elif char == ',':
                 env.handle_input()
             elif char == '.':
                 env.handle_output()
-            elif char == '@':
-                env.set_reg()
-            elif char == '!':
-                env.ext_reg()
+            elif TM_R:
+                if char == '@':
+                    env.set_reg()
+                elif char == '!':
+                    env.ext_reg()
             elif char == '=':
                 sys.exit(env.cur_val())
 
