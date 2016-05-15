@@ -12,6 +12,11 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
+# Mutiply:
+# num1  num2  result
+# ^start      ^end
+# [->[->+>+<<]>>[-<<+>>]<<<]>[-]>
+
 import time
 import sys
 from get_options import read_opts
@@ -46,14 +51,15 @@ class bf_prog:
         self.RT = []                    # Register tape (paper tape)
         self.RP = 0                     # Register Pointer
         self.func_tape = []             # Function tape (for '(' ')' ':')
-        self.reg = 0                    # Temporary register
+        if TM_R:
+            self.reg = 0                # Temporary register
         for i in range(CL_S):
             self.func_tape.append(None) # Initialize function tape
         for i in range(TP_S):
             self.RT.append(0)           # Initialize register tape
 
     def __str__(self):
-        return '(' + ', '.join((str(self.RP), str(self.cur_val()))) + ')'
+        return "@%d: %d" % (self.RP, self.cur_val())
 
     def cur_val(self):
         return self.RT[self.RP]
@@ -270,7 +276,7 @@ class bf_inst:
                     env.set_reg()
                 elif char == '!':
                     env.ext_reg()
-            elif char == '=':
+            elif EX_Q and char == '=':
                 sys.exit(env.cur_val())
 
             self.IP += 1
