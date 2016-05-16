@@ -12,6 +12,10 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
+# This version uses original features of brainfuck, with a two-tape
+# extension, 2 byte storage (65536) for each cell, number repeat macro,
+# wrapped tape and a quit extension
+
 # Mutiply:
 # num1  num2  result
 # ^start      ^end
@@ -21,7 +25,8 @@ import time
 import sys
 from get_options import read_opts
 
-CL_S, TP_S, TP_W, TM_R, DB_T, RP_M, EX_Q = read_opts()
+CL_S = 65536       # the maximum number allowed + 1
+TP_S = 30000       # count of cells
 
 def run_console():
     print("Brainfuck Interpreter 1.0.2 (with pbrain)")
@@ -48,15 +53,18 @@ class bf_prog:
 
     def __init__(self):
         self.input_stream = ""
-        self.RT = []                    # Register tape (paper tape)
-        self.RP = 0                     # Register Pointer
+        self.RT_A = []                  # Register tape (paper tape)
+        self.RT_B = []
+        self.RT = []
+        self.RP_A = 0                   # Register Pointer
+        self.RP_B = 0
+        self.RP = 0
         self.func_tape = []             # Function tape (for '(' ')' ':')
-        if TM_R:
-            self.reg = 0                # Temporary register
         for i in range(CL_S):
             self.func_tape.append(None) # Initialize function tape
         for i in range(TP_S):
-            self.RT.append(0)           # Initialize register tape
+            self.RT_A.append(0)         # Initialize register tape
+            self.RT_B.append(0)
 
     def __str__(self):
         return "@%d: %d" % (self.RP, self.cur_val())
@@ -75,7 +83,7 @@ class bf_prog:
                      "undershot the tape size of %d cells." % TP_S)
         if self.RP >= TP_S:
             sys.exit("error: tape memory out of bounds (overrun)\n" \
-                     "undershot the tape size of %d cells." % TP_S)
+                     "exceeded the tape size of %d cells." % TP_S)
 
     def handle_input(self):
         if len(self.input_stream) == 0:
@@ -172,7 +180,6 @@ class bf_inst:
         while self.IP < len(self.IT):
             char = self.IT[self.IP]
             diff = 0
-            #print(char, char.isdigit())
             if char in '-+':
                 while (self.IP < len(self.IT) and self.IT[self.IP] in '-+'):
                     char = self.IT[self.IP]
@@ -226,7 +233,7 @@ class bf_inst:
             elif char in '])':
                 raise Exception("LOOP END ENCOUNTERED: at " + str(self.IP) \
                         + "\n" + self.IT[self.IP - 5:self.IP + 6] \
-                        + "\n" + "   ^")
+                        + "\n" + "     ^")
 
             elif char == '#':
                 low = 0 if env.RP < 10 else env.RP - 10
@@ -244,7 +251,7 @@ class bf_inst:
                         print("    ", end='')
                 print()
 
-            elif RP_M and char.isdigit():
+            elif char.isdigit():
                 temp = ""
                 while (self.IP < len(self.IT) and \
                         self.IT[self.IP].isdigit()):
@@ -256,27 +263,28 @@ class bf_inst:
                     env.add(diff)
                 elif char == '-':
                     env.add(-diff)
-                elif char == '<':
-                    env.move(-diff)
                 elif char == '>':
                     env.move(diff)
+                elif char == '<':
+                    env.move(-diff)
                 elif char == ',':
                     for i in range(diff):
                         env.handle_input()
                 elif char == '.':
                     for i in range(diff):
                         env.handle_output()
+                else:
+                    self.IP -= 1
 
             elif char == ',':
                 env.handle_input()
             elif char == '.':
                 env.handle_output()
-            elif TM_R:
-                if char == '@':
-                    env.set_reg()
-                elif char == '!':
-                    env.ext_reg()
-            elif EX_Q and char == '=':
+            elif char == '@':
+                env.set_reg()
+            elif char == '!':
+                env.ext_reg()
+            elif char == '=':
                 sys.exit(env.cur_val())
 
             self.IP += 1

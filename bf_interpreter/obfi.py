@@ -25,9 +25,6 @@ import sys
 
 CL_S = 256         # the maximum number allowed + 1
 TP_S = 30000       # count of cells
-TP_W = True        # when RP > tape_size, back to 0 and continue
-TM_R = True        # has a temporary register
-
 
 def run_console():
     print("Brainfuck Interpreter 1.0.2 (with pbrain)")
@@ -57,8 +54,7 @@ class bf_prog:
         self.RT = []                    # Register tape (paper tape)
         self.RP = 0                     # Register Pointer
         self.func_tape = []             # Function tape (for '(' ')' ':')
-        if TM_R:
-            self.reg = 0                # Temporary register
+        self.reg = 0                # Temporary register
         for i in range(CL_S):
             self.func_tape.append(None) # Initialize function tape
         for i in range(TP_S):
@@ -81,7 +77,7 @@ class bf_prog:
                      "undershot the tape size of %d cells." % TP_S)
         if self.RP >= TP_S:
             sys.exit("error: tape memory out of bounds (overrun)\n" \
-                     "undershot the tape size of %d cells." % TP_S)
+                     "exceeded the tape size of %d cells." % TP_S)
 
     def handle_input(self):
         if len(self.input_stream) == 0:
