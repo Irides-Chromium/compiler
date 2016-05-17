@@ -15,6 +15,8 @@
 # This version uses original features of brainfuck, with a two-tape
 # extension, 2 byte storage (65536) for each cell, number repeat macro,
 # wrapped tape and a quit extension
+# Avaliable operators:
+# + - [ ] < > , . ( ) : @ ! ~ = 1 2 3 4 5 6 7 8 9 0
 
 # Mutiply:
 # num1  num2  result
@@ -55,10 +57,11 @@ class bf_prog:
         self.input_stream = ""
         self.RT_A = []                  # Register tape (paper tape)
         self.RT_B = []
-        self.RT = []
+        self.RT = [self.RT_A, self.RT_B]
         self.RP_A = 0                   # Register Pointer
         self.RP_B = 0
-        self.RP = 0
+        self.CT = 0                     # Current Tape number
+        self.RP = [self.RP_A, self.RP_B]
         self.func_tape = []             # Function tape (for '(' ')' ':')
         for i in range(CL_S):
             self.func_tape.append(None) # Initialize function tape
@@ -67,38 +70,44 @@ class bf_prog:
             self.RT_B.append(0)
 
     def __str__(self):
-        return "@%d: %d" % (self.RP, self.cur_val())
+        return "@%d: %d, @%d: %d" % (self.RP[0], self.get_val(0), \
+                                     self.RP[1], self.get_val(1))
 
-    def cur_val(self):
-        return self.RT[self.RP]
+    def get_val(self, this=True):
+        tape = self.CT if this else 1 - self.CT
+        return self.RT[tape][self.RP[tape]]
 
-    def add(self, value):
-        self.RT[self.RP] += value
-        self.RT[self.RP] %= CL_S
+    def add(self, value, this=True):
+        tape = self.CT if this else 1 - self.CT
+        self.RT[tape][self.RP[tape]] += value
+        self.RT[tape][self.RP[tape]] %= CL_S
 
     def move(self, diff):
-        self.RP += diff
-        if self.RP < 0:
+        self.RP[self.CT] += diff
+        if self.RP[self.CT] < 0:
             sys.exit("error: tape memory out of bounds (underrun)\n" \
                      "undershot the tape size of %d cells." % TP_S)
-        if self.RP >= TP_S:
+        if self.RP[self.CT] >= TP_S:
             sys.exit("error: tape memory out of bounds (overrun)\n" \
                      "exceeded the tape size of %d cells." % TP_S)
 
     def handle_input(self):
         if len(self.input_stream) == 0:
             self.input_stream += input()
-        self.RT[self.RP] = ord(self.input_stream[0])
+        self.RT[self.CT][self.RP[self.CT]] = ord(self.input_stream[0])
         self.input_stream = self.input_stream[1:]
 
     def handle_output(self):
-        print(chr(self.RT[self.RP]), end='')
+        print(chr(self.get_val()), end='')
 
-    def set_reg(self):
-        self.reg = self.cur_val()
+    def set_reg(self):          # Set value to the other tape
+        self.add(self.get_val(), False)
 
-    def ext_reg(self):          # Extract value from the temporary register
-        self.add(self.reg)
+    def ext_reg(self):          # Extract value from the other tape
+        self.add(self.get_val(False))
+
+    def switch_tape(self):
+        self.CT = 1 - self.CT
 
 class bf_loop:
     """Class for matching '[' ']' and '(' ')'s.
@@ -137,97 +146,91 @@ class bf_inst:
     def __str__(self):
         return self.IT
 
+    def next(self):                 # Move IP to the next one
+        self.IP += 1
+
+    def prev(self):                 # Move IP to the previous one
+        self.IP -= 1
+
+    def get_oper(self):             # The operator at the current position
+        return self.IT[self.IP]
+
     def search_loop(self):
-        ptr = loop_level = fdef_level = 0
+        loop_level = fdef_level = 0
         for ptr in range(len(self.IT)):
-            if self.IT[ptr] == '[':
-                self.loop_tape.append(bf_loop(loop_level, ptr))
-                loop_level += 1
-            elif self.IT[ptr] == ']':
-                loop_level -= 1
+            char = self.IT[ptr]
+            if char in '([':
+                level = loop_level if char == ']' else fdef_level
+                tape = self.loop_tape if char == '[' else self.fdef_tape
+                tape.append(bf_loop(level, ptr))
+                if char == '[': loop_level += 1
+                else:           fdef_level += 1
+
+            elif char in '])':
+                if char == ')':
+                    fdef_level -= 1
+                    level, tape = fdef_level, self.fdef_tape
+                else:
+                    loop_level -= 1
+                    level, tape = loop_level, self.loop_tape
                 paired = False
-                for loop in self.loop_tape:
-                    if loop.match(loop_level, ptr):
+                for loop in tape:
+                    if loop.match(level, ptr):
                         loop.set_end(ptr)
                         paired = True
                         break
                 if not paired:
-                    raise Exception("Loop end ']' not paired.")
+                    raise Exception("Loop not paired. (char: %s)" % char)
 
-            elif self.IT[ptr] == '(':
-                self.fdef_tape.append(bf_loop(fdef_level, ptr))
-                fdef_level += 1
-            elif self.IT[ptr] == ')':
-                fdef_level -= 1
-                paired = False
-                for loop in self.fdef_tape:
-                    if loop.match(fdef_level, ptr):
-                        loop.set_end(ptr)
-                        paired = True
-                        break
-                if not paired:
-                    raise Exception("Function definition not ended ')' .")
-
-        for loop in self.fdef_tape:
-            if not loop.paired:
-                raise Exception("Loop not paired.")
-        for loop in self.loop_tape:
-            if not loop.paired:
-                raise Exception("Loop not paired.")
+        for tape in (self.fdef_tape, self.loop_tape):
+            for loop in tape:
+                if not loop.paired:
+                    raise Exception("Loop not paired.")
 
     def execute(self, env):
         self.IP = 0
         while self.IP < len(self.IT):
-            char = self.IT[self.IP]
+            char = self.get_oper()
             diff = 0
             if char in '-+':
-                while (self.IP < len(self.IT) and self.IT[self.IP] in '-+'):
-                    char = self.IT[self.IP]
-                    if char == '+': diff += 1
-                    else:           diff -= 1
-                    self.IP += 1
-                self.IP -= 1
+                while (self.IP < len(self.IT) and self.get_oper() in '-+'):
+                    char = self.get_oper()
+                    diff += 1 if char == '+' else -1
+                    self.next()
+                self.prev()
                 env.add(diff)
 
             elif char in '<>':
-                while (self.IP < len(self.IT) \
-                        and self.IT[self.IP] in '<>'):
-                    char = self.IT[self.IP]
-                    if char == '>': diff += 1
-                    else:           diff -= 1
-                    self.IP += 1
-                self.IP -= 1
+                while (self.IP < len(self.IT) and self.get_oper() in '<>'):
+                    char = self.get_oper()
+                    diff += 1 if char == '>' else -1
+                    self.next()
+                self.prev()
                 env.move(diff)
 
-            elif char == '[':
+            elif char in '([':
                 start = end = 0
-                for loop in self.loop_tape:
+                tape = self.loop_tape if char == '[' else self.fdef_tape
+                for loop in tape:
                     if loop.loop_start == self.IP:
                         start, end = loop.loop_start, loop.loop_end
                         break
                 self.IP = end
-                if env.cur_val() != 0:
-                    inst = bf_inst(self.IT[start + 1:end])
-                    while env.cur_val() != 0:
-                        inst.execute(env)
 
-            elif char == '(':
-                start = end = 0
-                for loop in self.fdef_tape:
-                    if loop.loop_start == self.IP:
-                        start, end = loop.loop_start, loop.loop_end
-                        break
-                self.IP = end
-                
-                env.func_tape[env.cur_val()] = \
-                        bf_inst(self.IT[start + 1:end])
+                if char == '[':
+                    if env.get_val() != 0:
+                        inst = bf_inst(self.IT[start + 1:end])
+                        while env.get_val() != 0:
+                            inst.execute(env)
+                else:
+                    env.func_tape[env.get_val()] = \
+                            bf_inst(self.IT[start + 1:end])
 
             elif char == ':':
-                name = env.cur_val()
+                name = env.get_val()
                 if not env.func_tape[name]:
                     raise Exception("There is no such procedure.\n" + \
-                            "Procedure reference " + \
-                            "(name) is: " + str(name))
+                            "Procedure reference is: " + str(name))
                 env.func_tape[name].execute(env)
 
             elif char in '])':
@@ -236,29 +239,33 @@ class bf_inst:
                         + "\n" + "     ^")
 
             elif char == '#':
-                low = 0 if env.RP < 10 else env.RP - 10
-                high = TP_S - 1 if env.RP + 10 > TP_S else low + 20
-                for index in range(low, high):
-                    print("%3d " % index, end='')
-                print()
-                for index in range(low, high):
-                    print("%3d " % env.RT[index], end='')
-                print()
-                for index in range(low, high):
-                    if index == env.RP:
-                        print("  ^ ", end='')
-                    else:
-                        print("    ", end='')
-                print()
+                print("Current tape: %d" % (env.CT + 1))
+                for tape_num in [0, 1]:
+                    print("Tape number: %d" % (tape_num + 1))
+                    ptr = env.RP[tape_num]
+                    low = 0 if ptr < 6 else ptr - 6
+                    high = TP_S - 1 if ptr + 6 > TP_S else low + 13
+                    for index in range(low, high):
+                        print("%5d " % index, end='')
+                    print()
+                    for index in range(low, high):
+                        print("%5d " % env.RT[tape_num][index], end='')
+                    print()
+                    for index in range(low, high):
+                        if index == ptr:
+                            print("    ^ ", end='')
+                        else:
+                            print("      ", end='')
+                    print()
 
             elif char.isdigit():
                 temp = ""
                 while (self.IP < len(self.IT) and \
-                        self.IT[self.IP].isdigit()):
-                    temp += self.IT[self.IP]
-                    self.IP += 1
+                        self.get_oper().isdigit()):
+                    temp += self.get_oper()
+                    self.next()
                 diff = int(temp)
-                char = self.IT[self.IP]
+                char = self.get_oper()
                 if char == '+':
                     env.add(diff)
                 elif char == '-':
@@ -274,7 +281,7 @@ class bf_inst:
                     for i in range(diff):
                         env.handle_output()
                 else:
-                    self.IP -= 1
+                    self.prev()
 
             elif char == ',':
                 env.handle_input()
@@ -284,10 +291,12 @@ class bf_inst:
                 env.set_reg()
             elif char == '!':
                 env.ext_reg()
+            elif char == '~':
+                env.switch_tape()
             elif char == '=':
-                sys.exit(env.cur_val())
+                sys.exit(env.get_val())
 
-            self.IP += 1
+            self.next()
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:

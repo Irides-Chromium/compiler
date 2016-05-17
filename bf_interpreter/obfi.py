@@ -14,6 +14,8 @@
 
 # This is the original brainfuck interpreter with the pbrain extension and
 # a temporary register
+# Avaliable Operators:
+# + - < > [ ] , . ( ) : @ !
 
 # Mutiply:
 # num1  num2  result
@@ -54,7 +56,7 @@ class bf_prog:
         self.RT = []                    # Register tape (paper tape)
         self.RP = 0                     # Register Pointer
         self.func_tape = []             # Function tape (for '(' ')' ':')
-        self.reg = 0                # Temporary register
+        self.reg = 0                    # Temporary register
         for i in range(CL_S):
             self.func_tape.append(None) # Initialize function tape
         for i in range(TP_S):
