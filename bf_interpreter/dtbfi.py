@@ -12,9 +12,13 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-# This version uses original features of brainfuck, with a two-tape
-# extension, 2 byte storage (65536) for each cell, number repeat macro,
-# wrapped tape and a quit extension
+# This version uses: 
+# 1. Original features of brainfuck
+# 2. Two-tape extension
+# 3. 2 byte storage (65536) for each cell
+# 4. Number repeat macro
+# 5. Wrapped tape and 
+# 6. Quit extension
 # Avaliable operators:
 # + - [ ] < > , . ( ) : @ ! ~ = 1 2 3 4 5 6 7 8 9 0
 
@@ -25,7 +29,6 @@
 
 import time
 import sys
-from get_options import read_opts
 
 CL_S = 65536       # the maximum number allowed + 1
 TP_S = 30000       # count of cells
@@ -35,19 +38,14 @@ def run_console():
     print("Use '#' to inspect tape")
     environment = bf_prog()
     while True:
-        try:
-            bf_inst(input(">>> ")).execute(environment)
-        except (EOFError, KeyboardInterrupt):
-            sys.exit(print())
+        try: bf_inst(input(">>> ")).execute(environment)
+        except (EOFError, KeyboardInterrupt): sys.exit(print())
 
 def run_file(filename):
-    try:
-        file = open(filename, "r")
-    except IOError:
-        print("%s: cannot find %s: no such file" % (sys.argv[0], filename))
-        sys.exit(2)
-    else:
-        bf_inst(file.read()).execute(bf_prog())
+    try: file = open(filename, "r")
+    except IOError: sys.exit("%s: cannot find %s: no such file" % \
+            (sys.argv[0], filename))
+    else: bf_inst(file.read()).execute(bf_prog())
 
 class bf_prog:
     """The environment or context used by the BF program.
@@ -60,8 +58,8 @@ class bf_prog:
         self.RT = [self.RT_A, self.RT_B]
         self.RP_A = 0                   # Register Pointer
         self.RP_B = 0
-        self.CT = 0                     # Current Tape number
         self.RP = [self.RP_A, self.RP_B]
+        self.CT = 0                     # Current Tape number
         self.func_tape = []             # Function tape (for '(' ')' ':')
         for i in range(CL_S):
             self.func_tape.append(None) # Initialize function tape
@@ -84,26 +82,21 @@ class bf_prog:
 
     def move(self, diff):
         self.RP[self.CT] += diff
-        if self.RP[self.CT] < 0:
-            sys.exit("error: tape memory out of bounds (underrun)\n" \
-                     "undershot the tape size of %d cells." % TP_S)
-        if self.RP[self.CT] >= TP_S:
-            sys.exit("error: tape memory out of bounds (overrun)\n" \
-                     "exceeded the tape size of %d cells." % TP_S)
+        self.RP[self.CT] %= 30000
 
-    def handle_input(self):
+    def handle_i(self):
         if len(self.input_stream) == 0:
             self.input_stream += input()
         self.RT[self.CT][self.RP[self.CT]] = ord(self.input_stream[0])
         self.input_stream = self.input_stream[1:]
 
-    def handle_output(self):
+    def handle_o(self):
         print(chr(self.get_val()), end='')
 
-    def set_reg(self):          # Set value to the other tape
+    def set_reg(self):                  # Set value to the other tape
         self.add(self.get_val(), False)
 
-    def ext_reg(self):          # Extract value from the other tape
+    def ext_reg(self):                  # Extract value from the other tape
         self.add(self.get_val(False))
 
     def switch_tape(self):
@@ -160,13 +153,14 @@ class bf_inst:
         for ptr in range(len(self.IT)):
             char = self.IT[ptr]
             if char in '([':
-                level = loop_level if char == ']' else fdef_level
+                level = loop_level if char == '[' else fdef_level
                 tape = self.loop_tape if char == '[' else self.fdef_tape
                 tape.append(bf_loop(level, ptr))
                 if char == '[': loop_level += 1
                 else:           fdef_level += 1
 
             elif char in '])':
+                level = tape = 0
                 if char == ')':
                     fdef_level -= 1
                     level, tape = fdef_level, self.fdef_tape
@@ -180,7 +174,8 @@ class bf_inst:
                         paired = True
                         break
                 if not paired:
-                    raise Exception("Loop not paired. (char: %s)" % char)
+                    raise Exception("Loop not paired." \
+                            "(char: %s, pos: %d)" % (char, ptr))
 
         for tape in (self.fdef_tape, self.loop_tape):
             for loop in tape:
@@ -232,26 +227,27 @@ class bf_inst:
                     raise Exception("There is no such procedure.\n" + \
                             "Procedure reference is: " + str(name))
                 env.func_tape[name].execute(env)
-
-            elif char in '])':
-                raise Exception("LOOP END ENCOUNTERED: at " + str(self.IP) \
-                        + "\n" + self.IT[self.IP - 5:self.IP + 6] \
-                        + "\n" + "     ^")
+# DEBUG USE
+#           elif char in '])':
+#               raise Exception("LOOP END ENCOUNTERED: at " + str(self.IP) \
+#                       + "\n" + self.IT[self.IP - 5:self.IP + 6] \
+#                       + "\n" + "     ^")
 
             elif char == '#':
                 print("Current tape: %d" % (env.CT + 1))
                 for tape_num in [0, 1]:
                     print("Tape number: %d" % (tape_num + 1))
                     ptr = env.RP[tape_num]
-                    low = 0 if ptr < 6 else ptr - 6
-                    high = TP_S - 1 if ptr + 6 > TP_S else low + 13
-                    for index in range(low, high):
-                        print("%5d " % index, end='')
+                    lo = ptr - 5
+                    hi = ptr + 7
+                    for index in range(lo, hi):
+                        print("%5d " % (index % TP_S), end='')
                     print()
-                    for index in range(low, high):
-                        print("%5d " % env.RT[tape_num][index], end='')
+                    for index in range(lo, hi):
+                        print("%5d " % env.RT[tape_num][index % TP_S], \
+                                end='')
                     print()
-                    for index in range(low, high):
+                    for index in range(lo, hi):
                         if index == ptr:
                             print("    ^ ", end='')
                         else:
@@ -276,17 +272,17 @@ class bf_inst:
                     env.move(-diff)
                 elif char == ',':
                     for i in range(diff):
-                        env.handle_input()
+                        env.handle_i()
                 elif char == '.':
                     for i in range(diff):
-                        env.handle_output()
+                        env.handle_o()
                 else:
                     self.prev()
 
             elif char == ',':
-                env.handle_input()
+                env.handle_i()
             elif char == '.':
-                env.handle_output()
+                env.handle_o()
             elif char == '@':
                 env.set_reg()
             elif char == '!':
