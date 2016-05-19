@@ -27,6 +27,11 @@
 # ^start      ^end
 # [->[->+>+<<]>>[-<<+>>]<<<]>[-]>
 
+# Division
+# number 0 divisor
+# [->+>-[>+>>]>[+[-<+>]>+>>]<<<<<<]
+# 0 number d-n%d n%d n/d
+
 import time
 import sys
 
