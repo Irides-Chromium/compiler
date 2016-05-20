@@ -48,6 +48,8 @@ And other extensions:
 1. Added a temporary registor, use <kbd>@</kbd> to store the byte under the pointer to the register, use <kbd>!</kbd> to add the value in the register to the byte under the pointer.
 2. Use <kbd>=</kbd> to quit the program with the value of the byte under the pointer.
 
+For the three executables in the directory, `bfi.py` is the made to use process-oriented and like the original's algorithm, `pbfi.py` is a brainfuck interpreter with pbrain extension, and `dtbfi.py` has more extensions. Look into the files for more details.
+
 ## Usage
 
 ### Console mode
