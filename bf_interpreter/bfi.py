@@ -17,11 +17,6 @@
 # Avaliable Operators:
 # + - < > [ ] , . ( ) : @ !
 
-# Mutiply:
-# num1  num2  result
-# ^start      ^end
-# [->[->+>+<<]>>[-<<+>>]<<<]>[-]>
-
 import time
 import sys
 
@@ -34,14 +29,11 @@ func_tape = [None for i in range(CL_S)]  # Function tape
 reg = 0                                  # Temporary register
 
 def run_console():
-    print("Brainfuck Interpreter 1.0.2 (with pbrain)")
+    print("Brainfuck Interpreter 1.0.2 (W: pbrain not usable)")
     print("Use '#' to inspect tape")
-    all_tape = ""           # TODO make static
     while True:
         try:
-            tape = input(">>> ")
-            all_tape += tape
-            execute(tape)
+            execute(input(">>> "))
         except (EOFError, KeyboardInterrupt): sys.exit(print())
 
 def run_file(filename):
