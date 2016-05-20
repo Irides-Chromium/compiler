@@ -1,0 +1,9 @@
+# Mutiply:
+# num1  num2  result
+# ^start      ^end
+# [->[->+>+<<]>>[-<<+>>]<<<]>[-]>
+
+# Division
+# number 0 divisor
+# [->+>-[>+>>]>[+[-<+>]>+>>]<<<<<<]
+# 0 number d-n%d n%d n/d

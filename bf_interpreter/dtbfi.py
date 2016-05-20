@@ -22,16 +22,6 @@
 # Avaliable operators:
 # + - [ ] < > , . ( ) : @ ! ~ = 1 2 3 4 5 6 7 8 9 0
 
-# Mutiply:
-# num1  num2  result
-# ^start      ^end
-# [->[->+>+<<]>>[-<<+>>]<<<]>[-]>
-
-# Division
-# number 0 divisor
-# [->+>-[>+>>]>[+[-<+>]>+>>]<<<<<<]
-# 0 number d-n%d n%d n/d
-
 import time
 import sys
 
@@ -39,7 +29,7 @@ CL_S = 65536       # the maximum number allowed + 1
 TP_S = 30000       # count of cells
 
 def run_console():
-    print("Brainfuck Interpreter 1.0.2 (with pbrain)")
+    print("Brainfuck Interpreter 2.0 (with pbrain and other extension)")
     print("Use '#' to inspect tape")
     environment = bf_prog()
     while True:
@@ -47,10 +37,9 @@ def run_console():
         except (EOFError, KeyboardInterrupt): sys.exit(print())
 
 def run_file(filename):
-    try: file = open(filename, "r")
+    try: bf_inst(open(filename, "r").read()).execute(bf_prog())
     except IOError: sys.exit("%s: cannot find %s: no such file" % \
             (sys.argv[0], filename))
-    else: bf_inst(file.read()).execute(bf_prog())
 
 class bf_prog:
     """The environment or context used by the BF program.
@@ -58,21 +47,17 @@ class bf_prog:
 
     def __init__(self):
         self.input_stream = ""
-        self.RT_A = []                  # Register tape (paper tape)
-        self.RT_B = []
+        self.RT_A = [0 for i in range(TP_S)]  # Register tape (paper tape)
+        self.RT_B = [0 for i in range(TP_S)]
         self.RT = [self.RT_A, self.RT_B]
-        self.RP_A = 0                   # Register Pointer
+        self.RP_A = 0                         # Register Pointer
         self.RP_B = 0
-        self.RP = [self.RP_A, self.RP_B]
-        self.CT = 0                     # Current Tape number
-        self.func_tape = []             # Function tape (for '(' ')' ':')
-        for i in range(CL_S):
-            self.func_tape.append(None) # Initialize function tape
-        for i in range(TP_S):
-            self.RT_A.append(0)         # Initialize register tape
-            self.RT_B.append(0)
+        self.RP = [self.RP_A, self.RP_B]      
+        self.CT = 0                           # Current Tape number
+        self.func_tape = [None for i in range(CL_S)]# Function tape
 
     def __str__(self):
+        f = lambda a: print("%d: %d" % (self.RP[a], self.get_val(a)))
         return "@%d: %d, @%d: %d" % (self.RP[0], self.get_val(0), \
                                      self.RP[1], self.get_val(1))
 
@@ -232,11 +217,6 @@ class bf_inst:
                     raise Exception("There is no such procedure.\n" + \
                             "Procedure reference is: " + str(name))
                 env.func_tape[name].execute(env)
-# DEBUG USE
-#           elif char in '])':
-#               raise Exception("LOOP END ENCOUNTERED: at " + str(self.IP) \
-#                       + "\n" + self.IT[self.IP - 5:self.IP + 6] \
-#                       + "\n" + "     ^")
 
             elif char == '#':
                 print("Current tape: %d" % (env.CT + 1))

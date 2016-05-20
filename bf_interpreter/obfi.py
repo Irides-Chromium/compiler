@@ -33,19 +33,14 @@ def run_console():
     print("Use '#' to inspect tape")
     environment = bf_prog()
     while True:
-        try:
-            bf_inst(input(">>> ")).execute(environment)
-        except (EOFError, KeyboardInterrupt):
-            sys.exit(print())
+        try: bf_inst(input(">>> ")).execute(environment)
+        except (EOFError, KeyboardInterrupt): sys.exit(print())
 
 def run_file(filename):
-    try:
-        file = open(filename, "r")
+    try: bf_inst(open(filename, "r").read()).execute(bf_prog())
     except IOError:
-        print("%s: cannot find %s: no such file" % (sys.argv[0], filename))
-        sys.exit(2)
-    else:
-        bf_inst(file.read()).execute(bf_prog())
+        sys.exit(print("%s: cannot find %s: no such file" % \
+                (sys.argv[0], filename)))
 
 class bf_prog:
     """The environment or context used by the BF program.
@@ -53,14 +48,10 @@ class bf_prog:
 
     def __init__(self):
         self.input_stream = ""
-        self.RT = []                    # Register tape (paper tape)
-        self.RP = 0                     # Register Pointer
-        self.func_tape = []             # Function tape (for '(' ')' ':')
-        self.reg = 0                    # Temporary register
-        for i in range(CL_S):
-            self.func_tape.append(None) # Initialize function tape
-        for i in range(TP_S):
-            self.RT.append(0)           # Initialize register tape
+        self.RT = [0 for i in range(TP_S)]     # Register tape (paper tape)
+        self.RP = 0                            # Register Pointer
+        self.func_tape = [None for i in range(CL_S)]# Function tape
+        self.reg = 0                           # Temporary register
 
     def __str__(self):
         return "@%d: %d" % (self.RP, self.cur_val())
@@ -133,52 +124,51 @@ class bf_inst:
     def __str__(self):
         return self.IT
 
+    def get_oper(self):             # The operator at the current position
+        return self.IT[self.IP]
+
     def search_loop(self):
-        ptr = loop_level = fdef_level = 0
+        loop_level = fdef_level = 0
         for ptr in range(len(self.IT)):
-            if self.IT[ptr] == '[':
-                self.loop_tape.append(bf_loop(loop_level, ptr))
-                loop_level += 1
-            elif self.IT[ptr] == ']':
-                loop_level -= 1
+            char = self.IT[ptr]
+            if char in '([':
+                level = loop_level if char == '[' else fdef_level
+                tape = self.loop_tape if char == '[' else self.fdef_tape
+                tape.append(bf_loop(level, ptr))
+                if char == '[': loop_level += 1
+                else:           fdef_level += 1
+
+            elif char in '])':
+                level = tape = 0
+                if char == ')':
+                    fdef_level -= 1
+                    level, tape = fdef_level, self.fdef_tape
+                else:
+                    loop_level -= 1
+                    level, tape = loop_level, self.loop_tape
                 paired = False
-                for loop in self.loop_tape:
-                    if loop.match(loop_level, ptr):
+                for loop in tape:
+                    if loop.match(level, ptr):
                         loop.set_end(ptr)
                         paired = True
                         break
                 if not paired:
-                    raise Exception("Loop end ']' not paired.")
+                    raise Exception("Loop not paired." \
+                            "(char: %s, pos: %d)" % (char, ptr))
 
-            elif self.IT[ptr] == '(':
-                self.fdef_tape.append(bf_loop(fdef_level, ptr))
-                fdef_level += 1
-            elif self.IT[ptr] == ')':
-                fdef_level -= 1
-                paired = False
-                for loop in self.fdef_tape:
-                    if loop.match(fdef_level, ptr):
-                        loop.set_end(ptr)
-                        paired = True
-                        break
-                if not paired:
-                    raise Exception("Function definition not ended ')' .")
-
-        for loop in self.fdef_tape:
-            if not loop.paired:
-                raise Exception("Loop not paired.")
-        for loop in self.loop_tape:
-            if not loop.paired:
-                raise Exception("Loop not paired.")
+        for tape in (self.fdef_tape, self.loop_tape):
+            for loop in tape:
+                if not loop.paired:
+                    raise Exception("Loop not paired.")
 
     def execute(self, env):
         self.IP = 0
         while self.IP < len(self.IT):
-            char = self.IT[self.IP]
+            char = self.get_oper()
             diff = 0
             if char in '-+':
                 while (self.IP < len(self.IT) and self.IT[self.IP] in '-+'):
-                    char = self.IT[self.IP]
+                    char = self.get_oper()
                     if char == '+': diff += 1
                     else:           diff -= 1
                     self.IP += 1
@@ -188,7 +178,7 @@ class bf_inst:
             elif char in '<>':
                 while (self.IP < len(self.IT) \
                         and self.IT[self.IP] in '<>'):
-                    char = self.IT[self.IP]
+                    char = self.get_oper()
                     if char == '>': diff += 1
                     else:           diff -= 1
                     self.IP += 1
@@ -232,19 +222,19 @@ class bf_inst:
                         + "\n" + "   ^")
 
             elif char == '#':
-                low = 0 if env.RP < 10 else env.RP - 10
-                high = TP_S - 1 if env.RP + 10 > TP_S else low + 20
+                low = 0 if env.RP < 5 else env.RP - 5
+                high = TP_S if env.RP + 7 > TP_S else low + 12
                 for index in range(low, high):
-                    print("%3d " % index, end='')
+                    print("%5d " % index, end='')
                 print()
                 for index in range(low, high):
-                    print("%3d " % env.RT[index], end='')
+                    print("%5d " % env.RT[index], end='')
                 print()
                 for index in range(low, high):
                     if index == env.RP:
-                        print("  ^ ", end='')
+                        print("    ^ ", end='')
                     else:
-                        print("    ", end='')
+                        print("      ", end='')
                 print()
 
             elif char == ',':
