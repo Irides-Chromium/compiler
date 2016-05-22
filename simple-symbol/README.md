@@ -9,34 +9,96 @@ This is the first programming language that I write. After completing the [Brain
 
 ## Operators (commands)
 
-    byte type   description
- 1. `~`  [+] switch between tapes.
- 2. `!`  [+] jump to a cell.
- 3. `@`  [@] add the value of current cell to the one in another tape.
- 4. `#`  [+] add the value of the pointer to the current cell.
- 5. `$`  [@] return the value of one cell (index specified).
- 6. `%`  [+] set the current cell with a modulo (divisor specified).
- 7. `^`  [+] set the current cell with a power (power specified).
- 8. `&`  [@] add the value of a cell in another tape to the current cell.
- 9. `*`  [+] set the current cell with a mutiplication (factor specified).
-10. `(`  [0] starts the definition of a *function* (not procedure).
-11. `)`  [0] ends the definition of a *function* (not procedure).
-12. `+`  [+] set the current cell with a addition (factor specified).
-13. `-`  [+] set the current cell with a substraction (factor specified).
-14. `<`  [+] move the pointer to the left (difference specified).
-15. `>`  [+] move the pointer to the right (difference specified).
-16. `[`  [0] starts a loop (like in brainfuck).
-17. `]`  [0] ends a loop (like in brainfuck).
-18. `{`  [0] starts a small scope (for expressions).
-19. `}`  [0] ends a small scope (for expressions).
-20. `:`  [@] calls a *function* (reference specified).
-21. `;`  [@] returns a value (value specified, in a function).
-22. `,`  [+] reads in a byte (like in brainfuck).
-23. `.`  [+] output the current cell (like in brainfuck).
-24. `=`  [@] exit the program (value specified).
-25. `?`  [0] if, current cell examined.
-26. `/`  [+] set the current cell with a division (divisor specified).
+0. byte description
+1.  `~` switch between tapes.
+2.  `#` jump to a cell.
+3.  `@` add the value of current cell to the one in another tape.
+4.  `$` return the value of one cell (index specified).
+5.  `%` set the current cell with a modulo (divisor specified).
+6.  `^` set the current cell with a power (power specified).
+7.  `!` add the value of a cell in another tape to the current cell.
+8.  `*` set the current cell with a mutiplication (factor specified).
+9.  `(` starts the definition of a *function* (not procedure).
+10. `)` ends the definition of a *function* (not procedure).
+11. `+` set the current cell with a addition (factor specified).
+12. `-` set the current cell with a substraction (factor specified).
+13. `<` move the pointer to the left (difference specified).
+14. `>` move the pointer to the right (difference specified).
+15. `[` starts a loop (like in brainfuck).
+16. `]` ends a loop (like in brainfuck).
+17. `{` starts a small scope (for expressions).
+18. `}` ends a small scope (for expressions).
+19. `:` calls a *function* (reference specified).
+20. `;` returns a value (value specified, in a function).
+21. `,` reads in a byte (like in brainfuck).
+22. `.` output the current cell (like in brainfuck).
+23. `=` exit the program (value specified).
+24. `?` if, current cell examined.
+25. `/` set the current cell with a division (divisor specified).
 
 And other options of operators: `_`, `\`, `!`.
 
-**NOTE:** 
+### Behaviour and types of the operands.
+
++------+-----------+----------+--------+---------+---------+
+|      | number of | implicit | explicit operand | default |
+| byte | operands  | operands | number | present |  value  |
++------+-----------+----------+--------+---------+---------+
+| `~`  |     1     |    0     |   1    |    0    |  next   |
++------+-----------+----------+--------+---------+---------+
+| `#`  |     1     |    0     |   1    |    0    |no effect|
++------+-----------+----------+--------+---------+---------+
+| `@`  |     1     |    0     |   1    |    0    |  cell   |
++------+-----------+----------+--------+---------+---------+
+| `$`  |     1     |    0     |   1    |    0    |  cell   |
++------+-----------+----------+--------+---------+---------+
+| `%`  |     2     |    1     |   1    |    0    |    2    |
++------+-----------+----------+--------+---------+---------+
+| `^`  |     2     |    1     |   1    |    0    |    2    |
++------+-----------+----------+--------+---------+---------+
+| `!`  |     1     |    0     |   1    |    0    |  next   |
++------+-----------+----------+--------+---------+---------+
+| `*`  |     2     |    1     |   1    |    0    |    2    |
++------+-----------+----------+--------+---------+---------+
+| `(`  |     0     |    0     |   0    |  none   |  none   |
++------+-----------+----------+--------+---------+---------+
+| `)`  |     0     |    0     |   0    |  none   |  none   |
++------+-----------+----------+--------+---------+---------+
+| `+`  |     2     |    1     |   1    |    0    |    1    |
++------+-----------+----------+--------+---------+---------+
+| `-`  |     2     |    1     |   1    |    0    |    1    |
++------+-----------+----------+--------+---------+---------+
+| `<`  |     1     |    1     |   1    |    0    |    1    |
++------+-----------+----------+--------+---------+---------+
+| `>`  |     1     |    1     |   1    |    0    |    1    |
++------+-----------+----------+--------+---------+---------+
+| `[`  |     0     |    0     |   0    |  none   |  none   |
++------+-----------+----------+--------+---------+---------+
+| `]`  |     0     |    0     |   0    |  none   |  none   |
++------+-----------+----------+--------+---------+---------+
+| `{`  |     0     |    0     |   0    |  none   |  none   |
++------+-----------+----------+--------+---------+---------+
+| `}`  |     0     |    0     |   0    |  none   |  none   |
++------+-----------+----------+--------+---------+---------+
+| `:`  |     1     |    0     |   1    |    0    |  cell   |
++------+-----------+----------+--------+---------+---------+
+| `;`  |     1     |    0     |   1    |    0    |  cell   |
++------+-----------+----------+--------+---------+---------+
+| `,`  |     1     |    0     |   0    |  none   |  none   |
++------+-----------+----------+--------+---------+---------+
+| `.`  |     1     |    0     |   1    |    0    |  cell   |
++------+-----------+----------+--------+---------+---------+
+| `=`  |     1     |    0     |   1    |    0    |  cell   |
++------+-----------+----------+--------+---------+---------+
+| `?`  |     1     |    0     |   1    |    1    |  none   |
++------+-----------+----------+--------+---------+---------+
+| `/`  |     2     |    1     |   1    |    0    |    2    |
++------+-----------+----------+--------+---------+---------+
+
+*NOTE:* If one operand has an implicit operand, it means it operates on the current cell. If one operand has an explicit operand, it means the next byte *may* be parsed. Present means "need to be present". 0 means no, 1 means yes, none means there is no explicit operand.
+
+## Syntax
+
+The Simple-Symble language has 2 register types: the tape registers and one expression register. The expression register is used when an expression after a operator is used. The operators in the expression
+
+The Simple-Symble language uses a "binary-syntax": binary-parsing and binary-expression. Binary-expression means that an expression consists of two parts: the operator and an optional expression (as shown in the table above). The optional expression may be a single byte, or an expression enclosed by `{` and `}`. For a single-byte-expression, there are only a few bytes will work. For those which won't work, it is reserved for the next parsing and no syntax error comes out. This is called the "binary-parsing". A stand alone expression enclosed by `{` and `}` (i.e. left from the last parsing) will have no meaning.
