@@ -115,4 +115,30 @@ In some situations, you may have one byte that is parsable for the previous one,
 
 The only syntax error that may occur is the matching problem. If there is no matching brackets (`()`, `[]`, `{}`), the interpreter will give an error. The brackets can be nested.
 
-### 
+### Structures
+
+####Simple calculations
+
+When an calculation operator is in operation, the cell are changed according to this:
+
+cell {calc}= expr
+
+where {calc} is one of the calculation operators (`+`, `-`, `/`, `*`, `%`, `^`), and expr is a expression or none.
+
+####Array
+
+Having a feature like brainfuck's, the tapes themselves are good arrays, but the operators makes it easier for programmers to get and set values of arrays. With the explicit operand, you can specify how many cells to the right/left the pointer moves, and moves back after operations are done.
+
+####Conditionals
+
+The conditionals are started by the operator `?`, with two bytes of comparison characters (>=, <=, ==, or ?>, ?<), and a compared value. In other languages, you may use less-equal to or larger than 0 to indicate `True` or `False`, but when comparing values, you *must* specify a 0, like using a `{}`. But this will clear out the expression-cell. Otherwise, you may put a non-parsable character for `?`, then the interpreter will auto-detect the value in the current cell, and use the same convention for `True` and `False`.
+
+The `?` operator discussed above denotes only the `if`; however, you can use `?!` for else (you may pass an expression to it to denote `else if` or `elif`), and `?\` for `endif`.
+
+These are just the default behaviours, you may also use a {}-expression to specify the value you want to check.
+
+####Loops
+
+The loops uses a similar sematic structure as the conditionals. While the brainfuck only have `[]` for loops, you may add a conditional with no `endif` (`?\`) right before the `[` to have the interpreter check the conditional specified before every loop.
+
+
