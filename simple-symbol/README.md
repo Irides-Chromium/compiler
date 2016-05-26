@@ -5,7 +5,7 @@ The Simple Symbol Programming Language
 
 ## Overview
 
-This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has about 25 operators (they are all symbols), two tapes (extendable up to 8), and one special register, but it is still undergoing an improvement and the design hasn't complete yet at this moment.
+This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of something like `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has about 25 operators (they are all symbols), two tapes (extendable up to 8), and one special register, but it is still undergoing an improvement and the design hasn't complete yet at this moment.
 
 ## Syntax
 
@@ -38,7 +38,7 @@ This is the first programming language that I write. After completing the [Brain
 24. `?` if, current cell examined.
 25. `/` set the current cell with a division (divisor specified).
 
-And other options of operators: `_`, `\`, `!`.
+And there are some special expressions, which will be explained later.
 
 ### Behaviour and types of the operands.
 
@@ -97,7 +97,7 @@ And other options of operators: `_`, `\`, `!`.
 | `/`  |     2     |    1     |   1    |    0    |    2    |
 +------+-----------+----------+--------+---------+---------+
 
-*NOTE:* If one operand has an implicit operand, it means it operates on the current cell. If one operand has an explicit operand, it means the next byte *may* be parsed. Present means "need to be present". 0 means no, 1 means yes, none means there is no explicit operand.
+*NOTE:* If one operand has an implicit operand, it means it operates on the current cell. If one operand has an explicit operand, it means the next byte *may* be parsed. Present means "need to be present". 0 means no, 1 means yes, none means there is no explicit operand. For the default value, "cell" means default cell, "none" means there is no explicit operand, "no effect" means no default value, others are indicated as numbers.
 
 ### Registers (cells)
 
@@ -114,3 +114,5 @@ In some situations, you may have one byte that is parsable for the previous one,
 *NOTE:* **parsable** means that the current byte and the next byte together is a valid expression. `++` is a sequence of `+` and will be parsed as `+{++}` (plus two to current cell, but rather complicated than the former one), instead of a single valid expression, or the second `+` is **parsable** for the first `+` (you may call it as a *sequence of expression*, if you want).
 
 The only syntax error that may occur is the matching problem. If there is no matching brackets (`()`, `[]`, `{}`), the interpreter will give an error. The brackets can be nested.
+
+### 
