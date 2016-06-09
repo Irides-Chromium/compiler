@@ -5,7 +5,7 @@ The Simple Symbol Programming Language
 
 ## Overview
 
-This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of something like `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has about 25 operators (they are all symbols), two tapes (extendable up to 8), and one special register, but it is still undergoing an improvement and the design hasn't complete yet at this moment.
+This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of something like `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has about 25 operators (they are all symbols), two tapes (extendable up to 8), and one special register.
 
 ## Syntax
 
@@ -30,7 +30,7 @@ This is the first programming language that I write. After completing the [Brain
 16. `]` ends a loop (like in brainfuck).
 17. `(` starts a small scope (for expressions).
 18. `)` ends a small scope (for expressions).
-19. `:` calls a *function* (reference specified).
+19. `:` calls a *function* (index specified, go to that cell and executes).
 20. `;` returns a value (value specified, in a function).
 21. `,` reads in a byte (like in brainfuck).
 22. `.` output the current cell (like in brainfuck).
@@ -92,7 +92,7 @@ And there are some special expressions, which will be explained later.
 +------+-----------+----------+--------+---------+---------+
 | `=`  |     1     |    0     |   1    |    0    |  cell   |
 +------+-----------+----------+--------+---------+---------+
-| `?`  |     1     |    0     |   1    |    1    |  none   |
+| `?`  |     4     |    0     |   3    |    1    |  none   |
 +------+-----------+----------+--------+---------+---------+
 | `/`  |     2     |    1     |   1    |    0    |    2    |
 +------+-----------+----------+--------+---------+---------+
@@ -135,7 +135,7 @@ where {calc} is one of the calculation operators (`+`, `-`, `/`, `*`, `%`, `^`),
 
 ####Array
 
-Having a feature like brainfuck's, the tapes themselves are good arrays, but the operators makes it easier for programmers to get and set values of arrays. With the explicit operand, you can specify how many cells to the right/left the pointer moves, and moves back after operations are done.
+Having a feature like brainfuck's, the tapes themselves are good arrays, but the operators makes it easier for programmers to get and set values of arrays. With the explicit operand, you can specify which index the `$` operator takes.
 
 For example, a get from an array would be like this:
 
@@ -147,7 +147,7 @@ if the tape is like this:
 
 ####Conditionals
 
-The conditionals are started by the operator `?`, with two bytes of comparison characters (>=, <=, ==, or ?>, ?<), and a compared value. In other languages, you may use less-equal to or larger than 0 to indicate `True` or `False`, but when comparing values, you *must* specify a 0, like using a `()`. But this will clear out the expression-cell. Otherwise, you may put a non-parsable character for `?`, then the interpreter will auto-detect the value in the current cell, and use the same convention for `True` and `False`.
+The conditionals are started by the operator `?`, with two bytes of comparison characters (>=, <=, ==, or ?>, ?<), and a compared value. So totally there are three operands for `?`. In other languages, you may use less-equal to or larger than 0 to indicate `True` or `False`, but when comparing values, you *must* specify a 0, like using a `()`. But this will clear out the expression-cell. Otherwise, you may put a non-parsable character for `?`, then the interpreter will auto-detect the value in the current cell, and use the same convention for `True` and `False`.
 
 The `?` operator discussed above denotes only the `if`; however, you can use `?!` for else (you may pass an expression to it to denote `else if` or `elif`), and `?\` for `endif`.
 
@@ -159,4 +159,4 @@ The loops uses a similar sematic structure as the conditionals. While the brainf
 
     ??<(++++)[>+.<]
 
-which tests if the loop cell is less than 4, moves the pointer to the right, adds one, outputs, moves the pointer to the left and start the next loop.
+which tests if the loop cell is less than 4, moves the pointer to the right, adds one, outputs, moves the pointer to the left and start the next loop. Plus, in this situation, `[]` have *no* effect.
