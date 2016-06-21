@@ -2,6 +2,7 @@
 TP_S = 30000
 
 import sys, re
+from putchar import putchar
 
 MX = [[0 for i in range(TP_S)] for i in range(8)]     # Array for tapes
 TPS = [0, 0]                             # Tape Pointer Stack
@@ -62,13 +63,12 @@ def parse_expr(expr):
     expr_reg_old = expr_reg
     expr_reg = 0
 
-
 def parsable(expr, index):
     oper = "+-*/^%"     # "Operators"
     retn = "~#$:,("     # operators that return a value (an expr as well)
     reci = "~#$@<>:;.=" # operators that receive a value
     brac = "(){}[]"     # The brackets
-    match = False
+    match = None
     if expr[index - 1] == "?":
         bi_expr = expr[index - 1:index + 3] 
         cond_t = re.compile("^\?((>=)|(==)|(<=)|(\?>)|(\?<))[%s]$" % retn)
