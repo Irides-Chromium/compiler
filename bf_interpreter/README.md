@@ -50,7 +50,7 @@ And other extensions:
 
 For the three executables in the directory, `bfi.py` is the made to use process-oriented and like the original's algorithm, `pbfi.py` is a brainfuck interpreter with pbrain extension, and `dtbfi.py` has more extensions. Look into the files for more details.
 
-Python3 uses Unicode for encoding, which is different from the original C-written interpreter using ascii for encoding. So I add the `putchar` module so that it will work more like the original version. If the `import putchar` line doesn't work properly, try to use the distribution package to install compile and install the library.
+Python3 uses Unicode for encoding, which is different from the original C-written interpreter using ascii for encoding. So I add the `putchar` module so that it will work more like the original version. If the `import putchar` line doesn't work properly, try to use the distribution package [here](https://github.com/Irides-Chromium/python_modules/tree/master/modules) to install compile and install the library.
 
 ## Usage
 
