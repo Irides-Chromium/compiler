@@ -19,6 +19,7 @@
 
 import time
 import sys
+from putchar import putchar
 
 CL_S = 256         # the maximum number allowed + 1
 TP_S = 30000       # count of cells
@@ -63,10 +64,10 @@ def handle_input():
     input_stream = input_stream[1:]
 
 def handle_output():
-    print("%c" % RT[RP], end='')
+    putchar(cur_val())
 
 def set_reg():
-    reg = RT[RP]
+    reg = cur_val()
 
 def ext_reg():          # Extract value from the temporary register
     add(reg)
@@ -164,8 +165,26 @@ def execute(IT):                    # The instruction tape
         elif char == '!': ext_reg()
         IP += 1
 
+def usage():
+    print("""Usage: {prog} [OPTIONS] [file or code]
+Options:
+        -h      Show this help message
+        -f file Use code from file
+
+Use {prog} without arguments to open console
+Use {prog} [code] to run code directly
+""".format(prog=sys.argv[0]))
+
 if __name__ == '__main__':
+    if len(sys.argv) == 3:
+        if sys.argv[1] == '-f':
+            run_file(sys.argv[2])
     if len(sys.argv) == 2:
-        run_file(sys.argv[1])
-    else:
-        run_console()
+        if sys.argv[1] == '-h':
+            usage()
+            sys.exit(0)
+        if sys.argv[1] == '-f':
+            print("No file specified.")
+            sys.exit(2)
+        execute(sys.argv[1])
+    run_console()

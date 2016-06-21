@@ -24,6 +24,7 @@
 
 import time
 import sys
+from putchar import putchar
 
 CL_S = 65536       # the maximum number allowed + 1
 TP_S = 30000       # count of cells
@@ -81,7 +82,7 @@ class bf_prog:
         self.input_stream = self.input_stream[1:]
 
     def handle_o(self):
-        print(chr(self.get_val()), end='')
+        putchar(self.get_val())
 
     def set_reg(self):                  # Set value to the other tape
         self.add(self.get_val(), False)
@@ -279,8 +280,26 @@ class bf_inst:
 
             self.next()
 
+def usage():
+    print("""Usage: {prog} [OPTIONS] [file or code]
+Options:
+        -h      Show this help message
+        -f file Use code from file
+
+Use {prog} without arguments to open console
+Use {prog} [code] to run code directly
+""".format(prog=sys.argv[0]))
+
 if __name__ == '__main__':
+    if len(sys.argv) == 3:
+        if sys.argv[1] == '-f':
+            run_file(sys.argv[2])
     if len(sys.argv) == 2:
-        run_file(sys.argv[1])
-    else:
-        run_console()
+        if sys.argv[1] == '-h':
+            usage()
+            sys.exit(0)
+        if sys.argv[1] == '-f':
+            print("No file specified.")
+            sys.exit(2)
+        execute(sys.argv[1])
+    run_console()

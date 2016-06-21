@@ -24,6 +24,7 @@
 
 import time
 import sys
+from putchar import putchar
 
 CL_S = 256         # the maximum number allowed + 1
 TP_S = 30000       # count of cells
@@ -79,7 +80,7 @@ class bf_prog:
         self.input_stream = self.input_stream[1:]
 
     def handle_output(self):
-        print(chr(self.RT[self.RP]), end='')
+        putchar(self.cur_val())
 
     def set_reg(self):
         self.reg = self.RT[self.RP]
