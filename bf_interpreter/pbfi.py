@@ -250,7 +250,17 @@ class bf_inst:
             self.IP += 1
 
 if __name__ == '__main__':
+    if len(sys.argv) == 3:
+        if sys.argv[1] == '-f':
+            run_file(sys.argv[2])
     if len(sys.argv) == 2:
-        run_file(sys.argv[1])
-    else:
-        run_console()
+        if sys.argv[1] == '-h':
+            usage()
+            sys.exit(0)
+        if sys.argv[1] == '-f':
+            print("No file specified.")
+            sys.exit(2)
+        else:
+            bf_inst(sys.argv[1]).execute(bf_prog())
+            sys.exit(0)
+    run_console()

@@ -301,5 +301,7 @@ if __name__ == '__main__':
         if sys.argv[1] == '-f':
             print("No file specified.")
             sys.exit(2)
-        execute(sys.argv[1])
+        else:
+            bf_inst(sys.argv[1]).execute(bf_prog())
+            sys.exit(0)
     run_console()
