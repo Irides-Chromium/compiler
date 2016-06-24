@@ -7,6 +7,8 @@ The Simple Symbol Programming Language
 
 This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of something like `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has about 25 operators (they are all symbols), two tapes (extendable up to 8), and one special register.
 
+Python3 uses Unicode for encoding, which is different from the original C-written interpreter using ascii for encoding. So I add the `putchar` module so that it will work more like the original version. If the `import putchar` line doesn't work properly, try to use the distribution package [here](https://github.com/Irides-Chromium/python_modules/tree/master/modules) to install compile and install the library.
+
 ## Syntax
 
 ### Operators (commands)
