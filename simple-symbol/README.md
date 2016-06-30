@@ -117,9 +117,9 @@ The binary-parsing starts with any operator (single-byte expression). When the p
 
 In some situations, you may have one byte that is parsable for the previous one, but you don't want it to parse the two together, you can insert a non-parsable character, like " " (a space), between the two bytes. For example, an expression like `@+` may be parsed as "add one to the cell on the next tape". But if you want to parse it as "add current cell to the cell on the next tape, and add one to the current cell", you may want to write it like `@ +`, `@|+`, `@\+`, etc. because " ", "|", "\" are all non-parsable for `@`. Or, you can use `()` to enclose the expression you want.
 
-*NOTE:* **parsable** means that the current byte and the next byte together is a valid expression. `++` is a sequence of `+` and will be parsed as `+(++)` (plus two to current cell, but rather complicated than the former one), instead of a single valid expression, or the second `+` is **parsable** for the first `+` (you may call it as a *sequence of expression*, if you want).
+*NOTE:* **parsable** means that the current byte and the next byte together is a valid expression. `++` is a sequence of `+` and will be parsed as `+(++)` (plus two to current cell, but more complicated than the former one), instead of a single valid expression, or the second `+` is **parsable** for the first `+` (you may call it as a *sequence of operators*, if you want, but `<>` are also included in this).
 
-The only syntax error that may occur is the matching problem. If there is no matching brackets (`()`, `[]`, `{)`), the interpreter will give an error. The brackets can be nested.
+The only syntax error that may occur is the matching problem. If there is no matching brackets (`()`, `[]`, `{}`), the interpreter will give an error. The brackets can be nested.
 
 ### Overloading
 

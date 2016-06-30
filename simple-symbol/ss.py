@@ -4,9 +4,9 @@ TP_S = 30000
 import sys, re
 from putchar import putchar
 
-OPER = "-+*/^%"     # "Operators"
+OPER = "-+*/^%<>"   # "Operators"
 RETN = "~#$:,("     # operators that return a value (an expr as well)
-RECI = "~#$@<>:;.=" # operators that receive a value
+RECI = "~#$@:;.="   # operators that receive a value
 BRAC = "{[()]}"     # The brackets
 
 MX = [[0 for i in range(TP_S)] for i in range(8)]     # Array for tapes
@@ -16,12 +16,20 @@ TPS = [0, 0]                             # Tape Pointer Stack
 RPS = [0 for i in range(8)]              # Register Pointer Stack
 expr_reg = 0
 matchables = []
+stderr = open("ss_stderr.log", "w")
 
 class brac_t:       # Use for matchable structures: ()[]{} and ?...?!?$
-    def __init__(self, struct_type):
+    pos_t = ["mid", "end", "start"]
+    #         0      1      -1
+    def __init__(self, struct_type, start=-1, mid=-1, end=-1):
         self.struct_t = struct_type     # (, [, {, or ?
-        self.mid = 0
-        self.other_end = 0
+        for pos in pos_t:
+            exec("self.{p} = {p}".format(p=pos)
+        self.pos = -1
+        if mid >= 0:
+            self.pos = 0
+        elif end >= 0:
+            self.pos = 1
 
     def set_mid(self, mid):
         if mid < 1:
@@ -29,28 +37,29 @@ class brac_t:       # Use for matchable structures: ()[]{} and ?...?!?$
         self.mid = mid
 
     def set_other_end(self, other_end):
-        if other_end < 1:
-            log(0, 1, "Index too low")
-        self.other_end = other_end
+        if other_end < 1: log(0, 1, "Index too low")
+        if self.pos == 0: log(0, 1, "No such method for a `mid' type.")
+        exec("self.{} = {}".format(pos_t[-self.pos], other_end))
 
     def matched(self):
-        return True if self.other_end else False
+        return True if self.get_other_end() else False
 
-    def get_match(self):
-        return self.other_end
+    def get_other_end(self):
+        if self.pos == 0: log(0, 1, "No such method for a `mid' type.")
+        return eval("self.{}".format(pos_t[-self.pos]))
 
 def get_val(index=-1):
     TP = TPS[1]
     RP = RPS[TP]
     index = (index + 1 or RP + 1) - 1
-    # value = (32768 + value) % 65536 - 32768   # to simulate a `short int`
+    # value = (32768 + value) % 65536 - 32768   # to simulate a `short int'
     return MX[TP][index]
 
 def set_val(value, index=-1):
     TP = TPS[1]
     RP = RPS[TP]
     index = (index + 1 or RP + 1) - 1
-    # value = (32768 + value) % 65536 - 32768   # to simulate a `short int`
+    # value = (32768 + value) % 65536 - 32768   # to simulate a `short int'
     MX[TP][index] = value
 
 def set_TP(tape_num):
@@ -59,11 +68,9 @@ def set_TP(tape_num):
 
 def set_RP(index):
     if index < 0:
-        sys.exit(log(0, 0, \
-                "tape index undershot the tape size of %d cells." % TP_S))
+        log(0, 0, "tape index undershot the tape size of %d cells." % TP_S)
     if index >= TP_S: 
-        sys.exit(log(0, 0, \
-                "tape index exceeded the tape size of %d cells." % TP_S))
+        log(0, 0, "tape index exceeded the tape size of %d cells." % TP_S)
     RPS[TPS[1]] = index
 
 def move(diff):
@@ -75,12 +82,17 @@ def log(log_t, event_t, message):
     return_val = "32000"
     event = ["MEM Management", "Brackets", "Expression"]
     print("".join((log[log_t], "/[", event[event_t], "]: ", message)), \
-            file=sys.stderr)
-    return int(return_val[log_t])
+            file=stderr)
+    retn = int(return_val[log_t])
+    if retn > 0:
+        if stderr != sys.stderr:
+            stderr.close()
+        sys.exit(retn)
 
 def equi(byte1, byte2):
-    return BRAC.index(byte1) == BRAC.index(byte2) \
-            or BRAC.index(byte1) + BRAC.index(byte2) == 5
+    is_brac = BRAC.index(byte1) + BRAC.index(byte2) == 5
+    is_cond = byte1 in "?!$" and byte2 in "?!$"
+    return is_brac or is_cond and byte1 == byte2
 
 def scan(expr):
     global matchables
@@ -90,29 +102,33 @@ def scan(expr):
     while IP < len(expr):
         byte = expr[IP]
         if byte in "([{":
-            matchables[IP] = brac_t(byte)
+            matchables[IP] = brac_t(byte, start=IP)
             unmatched += [(IP, byte)]
         elif byte in ")]}":
             i = IP
-            while unmatched[i][1] != byte: i -= 1
-            other_end, struct_t = unmatched.pop()
-            matchables[other_end].set_other_end(IP)
-            matchables[IP] = brac_t(byte)
-            matchables[IP].set_other_end(other_end)
+            while not equi(byte, unmatched[i][0]): i -= 1
+            start, struct_t = unmatched.pop(i)
+            matchables[start].set_other_end(IP)
+            matchables[IP] = brac_t(byte, end=IP)
+            matchables[IP].set_other_end(start)
         elif byte == '?':
             if not parsable(expr, IP + 1):
-                sys.exit(log(0, 2, "Invalid syntax in conditional."))
-            matchables[IP] = brac_t('?')
+                log(0, 2, "Invalid syntax in conditional.")
             if expr[IP + 1] not in "!$":
+                matchables[IP] = brac_t('?', start=IP)
                 unmatched += [(IP, byte)]
             elif expr[IP + 1] == "!":
-                i = IP
-                while unmatched[i][1] != byte: i -= 1
-                start, struct_t = unmatched.pop()
+                start, struct_t = unmatched[-1]
                 matchables[start].set_mid(IP)
-                matchables[IP] = brac_t('?')    #TODO else statement struct
-                matchables[IP].set_other_end(other_end)
-                matchables[unmatched[IP][0]].set_mid(IP)
+                matchables[IP] = brac_t('?', mid=IP)
+                matchables[IP].start = start
+                matchables[start].set_mid(IP)
+            else:
+                start, struct_t = unmatched[-1]
+                matchables[start].set_mid(IP)
+                matchables[IP] = brac_t('?', mid=IP)
+                matchables[IP].start = start
+                matchables[start].set_mid(IP)
 
 def parse(expr):
     IP = 0
@@ -155,7 +171,7 @@ def bi_eval(operator, operand, is_operator):
         if is_operator:
             log(3, 0, "Tape number requested: %d" % operand)
             if operand > 7 or operand < 0:
-                sys.exit(log(0, 0, "Tape number out of range."))
+                log(0, 0, "Tape number out of range.")
             tape_num = operand
         else: return TPS[1]
     elif operator == "#": 
