@@ -32,15 +32,13 @@ TP_S = 30000       # count of cells
 def run_console():
     print("Brainfuck Interpreter 1.0.2 (with pbrain)")
     print("Use '#' to inspect tape")
-    environment = bf_prog()
     while True:
-        try: bf_inst(input(">>> ")).execute(environment)
+        try: bf_inst(input(">>> ")).execute(bf_prog())
         except (EOFError, KeyboardInterrupt): sys.exit(print())
 
 def run_file(filename):
     try: bf_inst(open(filename, "r").read()).execute(bf_prog())
-    except IOError:
-        sys.exit(print("%s: cannot find %s: no such file" % \
+    except IOError: sys.exit(print("%s: cannot find %s: no such file" % \
                 (sys.argv[0], filename)))
 
 class bf_prog:
@@ -74,8 +72,7 @@ class bf_prog:
                      "exceeded the tape size of %d cells." % TP_S)
 
     def handle_input(self):
-        if len(self.input_stream) == 0:
-            self.input_stream += input()
+        if len(self.input_stream) == 0: self.input_stream += input()
         self.RT[self.RP] = ord(self.input_stream[0])
         self.input_stream = self.input_stream[1:]
 
@@ -153,14 +150,12 @@ class bf_inst:
                         loop.set_end(ptr)
                         paired = True
                         break
-                if not paired:
-                    raise Exception("Loop not paired." \
+                if not paired: raise Exception("Loop not paired." \
                             "(char: %s, pos: %d)" % (char, ptr))
 
         for tape in (self.fdef_tape, self.loop_tape):
             for loop in tape:
-                if not loop.paired:
-                    raise Exception("Loop not paired.")
+                if not loop.paired: raise Exception("Loop not paired.")
 
     def execute(self, env):
         self.IP = 0
@@ -168,7 +163,7 @@ class bf_inst:
             char = self.get_oper()
             diff = 0
             if char in '-+':
-                while (self.IP < len(self.IT) and self.IT[self.IP] in '-+'):
+                while self.IP < len(self.IT) and self.IT[self.IP] in '-+':
                     char = self.get_oper()
                     if char == '+': diff += 1
                     else:           diff -= 1
@@ -177,8 +172,7 @@ class bf_inst:
                 env.add(diff)
 
             elif char in '<>':
-                while (self.IP < len(self.IT) \
-                        and self.IT[self.IP] in '<>'):
+                while self.IP < len(self.IT) and self.IT[self.IP] in '<>':
                     char = self.get_oper()
                     if char == '>': diff += 1
                     else:           diff -= 1
@@ -195,8 +189,7 @@ class bf_inst:
                 self.IP = end
                 if env.cur_val() != 0:
                     inst = bf_inst(self.IT[start + 1:end])
-                    while env.cur_val() != 0:
-                        inst.execute(env)
+                    while env.cur_val() != 0: inst.execute(env)
 
             elif char == '(':
                 start = end = 0
@@ -217,16 +210,10 @@ class bf_inst:
                             "(name) is: " + str(name))
                 env.func_tape[name].execute(env)
 
-            elif char in '])':
-                raise Exception("LOOP END ENCOUNTERED: at " + str(self.IP) \
-                        + "\n" + self.IT[self.IP - 5:self.IP + 6] \
-                        + "\n" + "   ^")
-
             elif char == '#':
                 low = 0 if env.RP < 5 else env.RP - 5
                 high = TP_S if env.RP + 7 > TP_S else low + 12
-                for index in range(low, high):
-                    print("%5d " % index, end='')
+                for index in range(low, high): print("%5d " % index, end='')
                 print()
                 for index in range(low, high):
                     print("%5d " % env.RT[index], end='')
@@ -238,14 +225,10 @@ class bf_inst:
                         print("      ", end='')
                 print()
 
-            elif char == ',':
-                env.handle_input()
-            elif char == '.':
-                env.handle_output()
-            elif char == '@':
-                env.set_reg()
-            elif char == '!':
-                env.ext_reg()
+            elif char == ',': env.handle_input()
+            elif char == '.': env.handle_output()
+            elif char == '@': env.set_reg()
+            elif char == '!': env.ext_reg()
 
             self.IP += 1
 

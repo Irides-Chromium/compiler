@@ -32,9 +32,8 @@ TP_S = 30000       # count of cells
 def run_console():
     print("Brainfuck Interpreter 2.0 (with pbrain and other extension)")
     print("Use '#' to inspect tape")
-    environment = bf_prog()
     while True:
-        try: bf_inst(input(">>> ")).execute(environment)
+        try: bf_inst(input(">>> ")).execute(bf_prog())
         except (EOFError, KeyboardInterrupt): sys.exit(print())
 
 def run_file(filename):
@@ -51,14 +50,12 @@ class bf_prog:
         self.RT_A = [0 for i in range(TP_S)]  # Register tape (paper tape)
         self.RT_B = [0 for i in range(TP_S)]
         self.RT = [self.RT_A, self.RT_B]
-        self.RP_A = 0                         # Register Pointer
-        self.RP_B = 0
+        self.RP_A = self.RP_B = 0             # Register Pointer
         self.RP = [self.RP_A, self.RP_B]      
         self.CT = 0                           # Current Tape number
         self.func_tape = [None for i in range(CL_S)]# Function tape
 
     def __str__(self):
-        f = lambda a: print("%d: %d" % (self.RP[a], self.get_val(a)))
         return "@%d: %d, @%d: %d" % (self.RP[0], self.get_val(0), \
                                      self.RP[1], self.get_val(1))
 
@@ -76,8 +73,7 @@ class bf_prog:
         self.RP[self.CT] %= 30000
 
     def handle_i(self):
-        if len(self.input_stream) == 0:
-            self.input_stream += input()
+        if len(self.input_stream) == 0: self.input_stream += input()
         self.RT[self.CT][self.RP[self.CT]] = ord(self.input_stream[0])
         self.input_stream = self.input_stream[1:]
 
@@ -170,8 +166,7 @@ class bf_inst:
 
         for tape in (self.fdef_tape, self.loop_tape):
             for loop in tape:
-                if not loop.paired:
-                    raise Exception("Loop not paired.")
+                if not loop.paired: raise Exception("Loop not paired.")
 
     def execute(self, env):
         self.IP = 0
@@ -179,7 +174,7 @@ class bf_inst:
             char = self.get_oper()
             diff = 0
             if char in '-+':
-                while (self.IP < len(self.IT) and self.get_oper() in '-+'):
+                while self.IP < len(self.IT) and self.get_oper() in '-+':
                     char = self.get_oper()
                     diff += 1 if char == '+' else -1
                     self.next()
@@ -187,7 +182,7 @@ class bf_inst:
                 env.add(diff)
 
             elif char in '<>':
-                while (self.IP < len(self.IT) and self.get_oper() in '<>'):
+                while self.IP < len(self.IT) and self.get_oper() in '<>':
                     char = self.get_oper()
                     diff += 1 if char == '>' else -1
                     self.next()
@@ -206,8 +201,7 @@ class bf_inst:
                 if char == '[':
                     if env.get_val() != 0:
                         inst = bf_inst(self.IT[start + 1:end])
-                        while env.get_val() != 0:
-                            inst.execute(env)
+                        while env.get_val() != 0: inst.execute(env)
                 else:
                     env.func_tape[env.get_val()] = \
                             bf_inst(self.IT[start + 1:end])
@@ -234,10 +228,8 @@ class bf_inst:
                                 end='')
                     print()
                     for index in range(lo, hi):
-                        if index == ptr:
-                            print("    ^ ", end='')
-                        else:
-                            print("      ", end='')
+                        print("    ^ " if index == ptr else "      ", \
+                                end='')
                     print()
 
             elif char.isdigit():
@@ -248,35 +240,20 @@ class bf_inst:
                     self.next()
                 diff = int(temp)
                 char = self.get_oper()
-                if char == '+':
-                    env.add(diff)
-                elif char == '-':
-                    env.add(-diff)
-                elif char == '>':
-                    env.move(diff)
-                elif char == '<':
-                    env.move(-diff)
-                elif char == ',':
-                    for i in range(diff):
-                        env.handle_i()
-                elif char == '.':
-                    for i in range(diff):
-                        env.handle_o()
-                else:
-                    self.prev()
+                if char == '+': env.add(diff)
+                elif char == '-': env.add(-diff)
+                elif char == '>': env.move(diff)
+                elif char == '<': env.move(-diff)
+                elif char == ',': for i in range(diff): env.handle_i()
+                elif char == '.': for i in range(diff): env.handle_o()
+                else: self.prev()
 
-            elif char == ',':
-                env.handle_i()
-            elif char == '.':
-                env.handle_o()
-            elif char == '@':
-                env.set_reg()
-            elif char == '!':
-                env.ext_reg()
-            elif char == '~':
-                env.switch_tape()
-            elif char == '=':
-                sys.exit(env.get_val())
+            elif char == ',': env.handle_i()
+            elif char == '.': env.handle_o()
+            elif char == '@': env.set_reg()
+            elif char == '!': env.ext_reg()
+            elif char == '~': env.switch_tape()
+            elif char == '=': sys.exit(env.get_val())
 
             self.next()
 
@@ -291,9 +268,7 @@ Use {prog} [code] to run code directly
 """.format(prog=sys.argv[0]))
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3:
-        if sys.argv[1] == '-f':
-            run_file(sys.argv[2])
+    if len(sys.argv) == 3: if sys.argv[1] == '-f': run_file(sys.argv[2])
     if len(sys.argv) == 2:
         if sys.argv[1] == '-h':
             usage()

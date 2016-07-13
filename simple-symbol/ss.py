@@ -51,14 +51,14 @@ class brac_t:       # Use for matchable structures: ()[]{} and ?...?!?$
 def get_val(index=-1):
     TP = TPS[1]
     RP = RPS[TP]
-    index = (index + 1 or RP + 1) - 1
+    index = index or RP
     # value = (32768 + value) % 65536 - 32768   # to simulate a `short int'
     return MX[TP][index]
 
 def set_val(value, index=-1):
     TP = TPS[1]
     RP = RPS[TP]
-    index = (index + 1 or RP + 1) - 1
+    index = index or RP
     # value = (32768 + value) % 65536 - 32768   # to simulate a `short int'
     MX[TP][index] = value
 
@@ -85,29 +85,29 @@ def log(log_t, event_t, message):
             file=stderr)
     retn = int(return_val[log_t])
     if retn > 0:
-        if stderr != sys.stderr:
-            stderr.close()
+        if stderr != sys.stderr: stderr.close()
         sys.exit(retn)
 
 def equi(byte1, byte2):
     is_brac = BRAC.index(byte1) + BRAC.index(byte2) == 5
     is_cond = byte1 in "?!$" and byte2 in "?!$"
-    return is_brac or is_cond and byte1 == byte2
+    return is_brac or is_cond or byte1 == byte2
 
-def scan(expr):
+def struct_scan(expr):
     global matchables
     matchables = [None for i in expr]
     unmatched = []
     IP = 0
+    in_cond = False
     while IP < len(expr):
         byte = expr[IP]
         if byte in "([{":
+            if in_cond and byte == "[":
+                unmatched[-1][1] = "?["
             matchables[IP] = brac_t(byte, start=IP)
             unmatched += [(IP, byte)]
         elif byte in ")]}":
-            i = IP
-            while not equi(byte, unmatched[i][0]): i -= 1
-            start, struct_t = unmatched.pop(i)
+            start, struct_t = unmatched.pop()
             matchables[start].set_other_end(IP)
             matchables[IP] = brac_t(byte, end=IP)
             matchables[IP].set_other_end(start)
@@ -117,6 +117,7 @@ def scan(expr):
             if expr[IP + 1] not in "!$":
                 matchables[IP] = brac_t('?', start=IP)
                 unmatched += [(IP, byte)]
+                in_cond = True
             elif expr[IP + 1] == "!":
                 start, struct_t = unmatched[-1]
                 matchables[start].set_mid(IP)

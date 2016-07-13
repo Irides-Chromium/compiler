@@ -33,14 +33,12 @@ def run_console():
     print("Brainfuck Interpreter 1.0.2 (W: pbrain not usable)")
     print("Use '#' to inspect tape")
     while True:
-        try:
-            execute(input(">>> "))
+        try: execute(input(">>> "))
         except (EOFError, KeyboardInterrupt): sys.exit(print())
 
 def run_file(filename):
     try: execute(open(filename, "r").read())
-    except IOError:
-        sys.exit(print("%s: cannot find %s: no such file" % \
+    except IOError: sys.exit(print("%s: cannot find %s: no such file" % \
                 (sys.argv[0], filename)))
 
 def cur_val():
@@ -57,20 +55,6 @@ def mov(diff):
                  "undershot the tape size of %d cells." % TP_S)
     if RP >= TP_S: sys.exit("error: tape memory out of bounds (overrun)\n"\
                  "exceeded the tape size of %d cells." % TP_S)
-
-def handle_input():
-    if len(input_stream) == 0: input_stream += input()
-    RT[RP] = ord(input_stream[0])
-    input_stream = input_stream[1:]
-
-def handle_output():
-    putchar(cur_val())
-
-def set_reg():
-    reg = cur_val()
-
-def ext_reg():          # Extract value from the temporary register
-    add(reg)
 
 def search_loop(IT):
     loop_lv = fdef_lv = 0
@@ -114,12 +98,8 @@ def execute(IT):                    # The instruction tape
         diff = 0
         if char in '-+':   add(int(char + '1'))
         elif char in '<>': mov(ord(char) - 61)
-        elif char == '[':
-            if cur_val() == 0:
-                IP = loop_tape[IP]
-        elif char == ']':
-            if cur_val() != 0:
-                IP = loop_tape[IP]
+        elif char == '[': if cur_val() == 0: IP = loop_tape[IP]
+        elif char == ']': if cur_val() != 0: IP = loop_tape[IP]
         elif char == '(':
             func_tape[cur_val()] = IP
             IP = loop_tape[IP]
@@ -128,7 +108,7 @@ def execute(IT):                    # The instruction tape
                 IP = old_IP
                 in_func = False
         elif char == ':':
-            print( func_tape[cur_val()])
+            print(func_tape[cur_val()])
             if not func_tape[cur_val()]:
                 raise Exception("There is no such procedure.\n" + \
                         "Procedure reference (name) is: " + str(name))
@@ -137,32 +117,25 @@ def execute(IT):                    # The instruction tape
                 in_func = True
                 IP = func_tape[cur_val()]
 
-#            elif char in '])':
-#                raise Exception("LOOP END ENCOUNTERED: at " + str(IP) \
-#                        + "\n" + IT[IP - 5:IP + 6] \
-#                        + "\n" + "   ^")
-
         elif char == '#':
             print(loop_tape)
             low = 0 if RP < 5 else RP - 5
             high = TP_S if RP + 7 > TP_S else low + 13
-            for index in range(low, high):
-                print("%5d " % index, end='')
+            for index in range(low, high): print("%5d " % index, end='')
+            print()
+            for index in range(low, high): print("%5d " % RT[index], end='')
             print()
             for index in range(low, high):
-                print("%5d " % RT[index], end='')
-            print()
-            for index in range(low, high):
-                if index == RP:
-                    print("    ^ ", end='')
-                else:
-                    print("      ", end='')
+                print("    ^ " if index == RP else "      ", end='')
             print()
 
-        elif char == ',': handle_input()
-        elif char == '.': handle_output()
-        elif char == '@': set_reg()
-        elif char == '!': ext_reg()
+        elif char == ',':
+            if len(input_stream) == 0: input_stream += input()
+            RT[RP] = ord(input_stream[0])
+            input_stream = input_stream[1:]
+        elif char == '.': putchar(cur_val())
+        elif char == '@': reg = cur_val()
+        elif char == '!': add(reg)
         IP += 1
 
 def usage():
@@ -176,9 +149,7 @@ Use {prog} [code] to run code directly
 """.format(prog=sys.argv[0]))
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3:
-        if sys.argv[1] == '-f':
-            run_file(sys.argv[2])
+    if len(sys.argv) == 3: if sys.argv[1] == '-f': run_file(sys.argv[2])
     if len(sys.argv) == 2:
         if sys.argv[1] == '-h':
             usage()
