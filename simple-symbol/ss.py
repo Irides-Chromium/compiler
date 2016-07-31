@@ -5,7 +5,7 @@ import sys, re
 from putchar import putchar
 
 OPER = "-+*/^%<>"   # "Operators"
-RETN = "~#$:,("     # operators that return a value (an expr as well)
+RETN = "~#$:,(`"     # operators that return a value (an expr as well)
 RECI = "~#$@:;.="   # operators that receive a value
 BRAC = "{[()]}"     # The brackets
 
@@ -18,11 +18,11 @@ expr_reg = 0
 matchables = []
 stderr = open("ss_stderr.log", "w")
 
-class brac_t:       # Use for matchable structures: ()[]{} and ?...?!?$
+class brac_t:       # Use for matchable structures: ()[]{}`` and ?...?!?$
     pos_t = ["mid", "end", "start"]
     #         0      1      -1
     def __init__(self, struct_type, start=-1, mid=-1, end=-1):
-        self.struct_t = struct_type     # (, [, {, or ?
+        self.struct_t = struct_type     # (, [, {, ? or ?[
         for pos in pos_t:
             exec("self.{p} = {p}".format(p=pos)
         self.pos = -1
@@ -98,12 +98,13 @@ def struct_scan(expr):
     matchables = [None for i in expr]
     unmatched = []
     IP = 0
-    in_cond = False
+    in_cond = 0
     while IP < len(expr):
         byte = expr[IP]
         if byte in "([{":
-            if in_cond and byte == "[":
-                unmatched[-1][1] = "?["
+            if in_cond == 2 and byte == "[":
+                unmatched[-1][1] = byte = "?["
+                in_cond -= 1
             matchables[IP] = brac_t(byte, start=IP)
             unmatched += [(IP, byte)]
         elif byte in ")]}":
@@ -117,7 +118,7 @@ def struct_scan(expr):
             if expr[IP + 1] not in "!$":
                 matchables[IP] = brac_t('?', start=IP)
                 unmatched += [(IP, byte)]
-                in_cond = True
+                in_cond = 2
             elif expr[IP + 1] == "!":
                 start, struct_t = unmatched[-1]
                 matchables[start].set_mid(IP)
@@ -166,8 +167,7 @@ def bi_eval(operator, operand, is_operator):
     ~ # @ $ % ^ ! * + - < > : ; , . = /
     Bi-parsing is applicable to these operators.
     """
-    if operator in OPER:
-        eval("set_val(get_val() %c operand)" % operator)
+    if operator in OPER: exec("set_val(get_val() %c operand)" % operator)
     elif operator == "~":
         if is_operator:
             log(3, 0, "Tape number requested: %d" % operand)
@@ -178,13 +178,11 @@ def bi_eval(operator, operand, is_operator):
     elif operator == "#": 
         if is_operator: set_RP(operand)
         else: return RPS[TPS[1]]
-    elif operator == "@":
-        MX[RPS[TPS[0]]] += operand or get_val()
+    elif operator == "@": MX[RPS[TPS[0]]] += operand or get_val()
     elif operator == "$":
-        if not operand:
-            return get_val()
-        if operand == -1:           # Expression cell
-            return expr_reg_old
+        if not operand: return get_val()
+        if operand == -1: return expr_reg_old
+        # Expression cell
         return get_val(operand)
     elif operator == "!": 
         MX[TP] += operand or MX[other_tape]
