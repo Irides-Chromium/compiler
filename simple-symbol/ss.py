@@ -11,8 +11,8 @@ BRAC = "{[()]}"     # The brackets
 
 MX = [[0 for i in range(TP_S)] for i in range(8)]     # Array for tapes
 TPS = [0, 0]                             # Tape Pointer Stack
-#      ^  ^
-#old_tape new tape (current)
+#      ^ |^
+#old_tape|new tape (current)
 RPS = [0 for i in range(8)]              # Register Pointer Stack
 expr_reg = 0
 matchables = []
@@ -26,15 +26,20 @@ class brac_t:       # Use for matchable structures: ()[]{}`` and ?...?!?$
         for pos in pos_t:
             exec("self.{p} = {p}".format(p=pos)
         self.pos = -1
-        if mid >= 0:
-            self.pos = 0
-        elif end >= 0:
-            self.pos = 1
+        if mid >= 0: self.pos = 0
+        elif end >= 0: self.pos = 1
 
     def set_mid(self, mid):
-        if mid < 1:
-            log(0, 1, "Index too low")
+        if mid < 1: log(0, 1, "Index too low")
         self.mid = mid
+
+    def set_start(self, mid):
+        if start < 1: log(0, 1, "Index too low")
+        self.start = start
+
+    def set_end(self, mid):
+        if end < 1: log(0, 1, "Index too low")
+        self.end = end
 
     def set_other_end(self, other_end):
         if other_end < 1: log(0, 1, "Index too low")
@@ -123,14 +128,12 @@ def struct_scan(expr):
                 start, struct_t = unmatched[-1]
                 matchables[start].set_mid(IP)
                 matchables[IP] = brac_t('?', mid=IP)
-                matchables[IP].start = start
-                matchables[start].set_mid(IP)
+                matchables[IP].set_start(start)
             else:
-                start, struct_t = unmatched[-1]
+                start, struct_t = unmatched.pop()
                 matchables[start].set_mid(IP)
                 matchables[IP] = brac_t('?', mid=IP)
                 matchables[IP].start = start
-                matchables[start].set_mid(IP)
 
 def parse(expr):
     IP = 0
