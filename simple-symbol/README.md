@@ -42,11 +42,11 @@ Python3 uses Unicode for encoding, which is different from the original C-writte
 
 And there are some special expressions, which will be explained later.
 
-### Behaviour and types of the operands.
+### Behaviour and types of the params.
 
 +------+-----------+----------+--------+---------+---------+
-|      | number of | implicit | explicit operand | default |
-| byte | operands  | operands | number | present |  value  |
+|      | number of | implicit |  explicit param  | default |
+| byte |  params   |  params  | number | present |  value  |
 +------+-----------+----------+--------+---------+---------+
 | `~`  |     1     |    0     |   1    |    0    |  next   |
 +------+-----------+----------+--------+---------+---------+
@@ -99,7 +99,7 @@ And there are some special expressions, which will be explained later.
 | `/`  |     2     |    1     |   1    |    0    |    2    |
 +------+-----------+----------+--------+---------+---------+
 
-*NOTE:* If one operand has an implicit operand, it means it operates on the current cell. If one operand has an explicit operand, it means the next byte *may* be parsed. Present means "need to be present". 0 means no, 1 means yes, none means there is no explicit operand. For the default value, "cell" means default cell, "none" means there is no explicit operand, "no effect" means no default value, others are indicated as numbers.
+*NOTE:* If one param has an implicit param, it means it operates on the current cell. If one param has an explicit param, it means the next byte *may* be parsed. Present means "need to be present". 0 means no, 1 means yes, none means there is no explicit param. For the default value, "cell" means default cell, "none" means there is no explicit param, "no effect" means no default value, others are indicated as numbers.
 
 ### Registers (cells)
 
@@ -107,13 +107,13 @@ The Simple-Symble language has 3 register types: the tape registers, one express
 
 The pointer register is a read-only register, but its value changes if there is `<` or `>` operations. Its value can be retrived using `#`.
 
-The tape registers are the ones where operations take place. In the behaviour table above, the ones which has a implicit operand often set the value of the current register. The value of any tape registers can be retrived using `$`, with a index specified. The value of the current register can be retrived using only `$`, or `$#`.
+The tape registers are the ones where operations take place. In the behaviour table above, the ones which has a implicit param often set the value of the current register. The value of any tape registers can be retrived using `$`, with a index specified. The value of the current register can be retrived using only `$`, or `$#`.
 
 ### Other syntax
 
 The Simple-Symble language uses a "binary-syntax": binary-parsing and binary-expression. Binary-expression means that an expression consists of two parts: the operator and an optional expression (as shown in the table above). The optional expression may be a single byte, or an expression enclosed by `(` and `)`. For a single-byte-expression, there are only a few bytes will work. For those which won't work, it is reserved for the next parsing and no syntax error comes out. This is called the "binary-parsing". A stand alone ()-expression (i.e. left from the last parsing) will have no meaning. Because there is no operation being operated (i.e. no operator with this expression was parsed)
 
-The binary-parsing starts with any operator (single-byte expression). When the parsing encounters the second byte when parsing, if the third byte is also parsable for the second byte, it will parse the third for the second. For example, let a expression be `+$#` (though it can be shortened as `+$`). When parsing the `$` as the explicit operand for `+`, because the `#` is parsable for `$`, so the `$#` will be an operand for `+` instead of a single `$`. But an expression like `+$#++` will be parsed as `+($(#+))+` because it only parse two bytes (the second `+` is parsed for `#`, but the third `+` is left out, because `++` cannot be parsed as `+(+)`). The parsing ends when the next byte to parse is not parsable for the current byte.
+The binary-parsing starts with any operator (single-byte expression). When the parsing encounters the second byte when parsing, if the third byte is also parsable for the second byte, it will parse the third for the second. For example, let a expression be `+$#` (though it can be shortened as `+$`). When parsing the `$` as the explicit param for `+`, because the `#` is parsable for `$`, so the `$#` will be an param for `+` instead of a single `$`. But an expression like `+$#++` will be parsed as `+($(#+))+` because it only parse two bytes (the second `+` is parsed for `#`, but the third `+` is left out, because `++` cannot be parsed as `+(+)`). The parsing ends when the next byte to parse is not parsable for the current byte.
 
 In some situations, you may have one byte that is parsable for the previous one, but you don't want it to parse the two together, you can insert a non-parsable character, like " " (a space), between the two bytes. For example, an expression like `@+` may be parsed as "add one to the cell on the next tape". But if you want to parse it as "add current cell to the cell on the next tape, and add one to the current cell", you may want to write it like `@ +`, `@|+`, `@\+`, etc. because " ", "|", "\" are all non-parsable for `@`. Or, you can use `()` to enclose the expression you want.
 
@@ -137,7 +137,7 @@ where {calc} is one of the calculation operators (`+`, `-`, `/`, `*`, `%`, `^`),
 
 ####Array
 
-Having a feature like brainfuck's, the tapes themselves are good arrays, but the operators makes it easier for programmers to get and set values of arrays. With the explicit operand, you can specify which index the `$` operator takes.
+Having a feature like brainfuck's, the tapes themselves are good arrays, but the operators makes it easier for programmers to get and set values of arrays. With the explicit param, you can specify which index the `$` operator takes.
 
 For example, a get from an array would be like this:
 
@@ -149,7 +149,7 @@ if the tape is like this:
 
 ####Conditionals
 
-The conditionals are started by the operator `?`, with two bytes of comparison characters (>=, <=, ==, or ?>, ?<), and a compared value. So totally there are three operands for `?`. In other languages, you may use less-equal to or larger than 0 to indicate `True` or `False`, but when comparing values, you *must* specify a 0, like using a `()`. But this will clear out the expression-cell. Otherwise, you may put a non-parsable character for `?`, then the interpreter will auto-detect the value in the current cell, and use the same convention for `True` and `False`.
+The conditionals are started by the operator `?`, with two bytes of comparison characters (>=, <=, ==, or >>, <<, or !=), and a compared value. So totally there are three params for `?`. In other languages, you may use less-equal to or larger than 0 to indicate `True` or `False`, but when comparing values, you *must* specify a 0, like using a `()`. But this will clear out the expression-cell. Otherwise, you may put a non-parsable character for `?`, then the interpreter will auto-detect the value in the current cell, and use the same convention for `True` and `False`.
 
 The `?` operator discussed above denotes only the `if`; however, you can use `?!` for else (you may pass an expression to it to denote `else if` or `elif`), and `?\` for `endif`.
 
