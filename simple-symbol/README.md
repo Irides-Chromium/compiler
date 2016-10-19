@@ -149,7 +149,7 @@ if the tape is like this:
 
 ####Conditionals
 
-The conditionals are started by the operator `?`, with two bytes of comparison characters (>=, <=, ==, or >>, <<, or !=), and a compared value. So totally there are three params for `?`. In other languages, you may use less-equal to or larger than 0 to indicate `True` or `False`, but when comparing values, you *must* specify a 0, like using a `()`. But this will clear out the expression-cell. Otherwise, you may put a non-parsable character for `?`, then the interpreter will auto-detect the value in the current cell, and use the same convention for `True` and `False`.
+The conditionals are started by the operator `?`, with two bytes of comparison characters (>=, <=, ==, or >>, <<, or /=), and a compared value. So totally there are three params for `?`. In other languages, you may use less-equal to or larger than 0 to indicate `True` or `False`, but when comparing values, you *must* specify a 0, like using a `()`. But this will clear out the expression-cell. Otherwise, you may put a non-parsable character for `?`, then the interpreter will auto-detect the value in the current cell, and use the same convention for `True` and `False`.
 
 The `?` operator discussed above denotes only the `if`; however, you can use `?!` for else (you may pass an expression to it to denote `else if` or `elif`), and `?\` for `endif`.
 
