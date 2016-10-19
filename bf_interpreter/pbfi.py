@@ -72,9 +72,7 @@ class bf_prog:
                      "exceeded the tape size of %d cells." % TP_S)
 
     def handle_input(self):
-        if len(self.input_stream) == 0: self.input_stream += input()
-        self.RT[self.RP] = ord(self.input_stream[0])
-        self.input_stream = self.input_stream[1:]
+        self.RT[self.RP] = ord(sys.stdin.read(1))
 
     def handle_output(self):
         putchar(self.cur_val())

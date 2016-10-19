@@ -73,9 +73,7 @@ class bf_prog:
         self.RP[self.CT] %= 30000
 
     def handle_i(self):
-        if len(self.input_stream) == 0: self.input_stream += input()
-        self.RT[self.CT][self.RP[self.CT]] = ord(self.input_stream[0])
-        self.input_stream = self.input_stream[1:]
+        self.RT[self.CT][self.RP[self.CT]] = ord(sys.stdin.read(1))
 
     def handle_o(self):
         putchar(self.get_val())

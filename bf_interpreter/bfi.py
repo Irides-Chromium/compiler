@@ -129,10 +129,7 @@ def execute(IT):                    # The instruction tape
                 print("    ^ " if index == RP else "      ", end='')
             print()
 
-        elif char == ',':
-            if len(input_stream) == 0: input_stream += input()
-            RT[RP] = ord(input_stream[0])
-            input_stream = input_stream[1:]
+        elif char == ',': RT[RP] = ord(sys.stdin.read(1))
         elif char == '.': putchar(cur_val())
         elif char == '@': reg = cur_val()
         elif char == '!': add(reg)
