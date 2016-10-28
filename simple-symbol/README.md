@@ -5,7 +5,7 @@ The Simple Symbol Programming Language
 
 ## Overview
 
-This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of something like `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has about 25 operators (they are all symbols), two tapes (extendable up to 8), and one special register.
+This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of something like `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has about 25 operators (they are all symbols), four tapes, and one special register.
 
 Python3 uses Unicode for encoding, which is different from the original C-written interpreter using ascii for encoding. So I add the `putchar` module so that it will work more like the original version. If the `import putchar` line doesn't work properly, try to use the distribution package [here](https://github.com/Irides-Chromium/python_modules/tree/master/modules) to install compile and install the library.
 
@@ -15,30 +15,30 @@ Python3 uses Unicode for encoding, which is different from the original C-writte
 
 0. byte description
 1.  `~` switch between tapes.
-2.  `#` jump to a cell.
-3.  `@` add the value of current cell to the one in another tape.
-4.  `$` return the value of one cell (index specified).
-5.  `%` set the current cell with a modulo (divisor specified).
-6.  `^` set the current cell with a power (power specified).
-7.  `!` add the value of a cell in another tape to the current cell.
-8.  `*` set the current cell with a mutiplication (factor specified).
+2.  `#` jump to a cell or return the cell number.
+3.  `@` add the value of current cell or a value to the one in another tape.
+4.  `$` return the value of one cell (index specified or current).
+5.  `%` set the current cell with a modulo (divisor specified or 2).
+6.  `^` set the current cell with a power (power specified or 2).
+7.  `!` add the value of the cell in another tape to the current cell (with index specified or the last cell).
+8.  `*` set the current cell with a mutiplication (factor specified or 2).
 9.  `{` starts the definition of a *function* (not procedure).
 10. `}` ends the definition of a *function* (not procedure).
-11. `+` set the current cell with a addition (factor specified).
-12. `-` set the current cell with a substraction (factor specified).
-13. `<` move the pointer to the left (difference specified).
-14. `>` move the pointer to the right (difference specified).
+11. `+` set the current cell with a addition (factor specified or 1).
+12. `-` set the current cell with a substraction (factor specified or 1).
+13. `<` move the pointer to the left (difference specified or 1).
+14. `>` move the pointer to the right (difference specified or 1).
 15. `[` starts a loop (like in brainfuck).
 16. `]` ends a loop (like in brainfuck).
 17. `(` starts a small scope (for expressions).
 18. `)` ends a small scope (for expressions).
-19. `:` calls a *function* (index specified, go to that cell and executes).
-20. `;` returns a value (value specified, in a function).
+19. `:` calls a *function* (value specified or current cell).
+20. `;` returns a value (value specified, in a sub-parsed expression).
 21. `,` reads in a byte (like in brainfuck).
-22. `.` output the current cell (like in brainfuck).
-23. `=` exit the program (value specified).
+22. `.` output the current cell or a value specified(like in brainfuck).
+23. `=` exit the program (value specified or current cell).
 24. `?` if, current cell examined.
-25. `/` set the current cell with a division (divisor specified).
+25. `/` set the current cell with a division (divisor specified or 2).
 
 And there are some special expressions, which will be explained later.
 
