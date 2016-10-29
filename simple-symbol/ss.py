@@ -9,10 +9,10 @@ BI_PAR = "~#@$%^!*+-<>:,.=/&`"  # Bi-parsable
 OPER = "-+*/^%<>"   # "Operators"
 MATH_OP = "-+*/^*"  # Math operators
 RETN = "-+~#$:,(`"  # opers that return a value (an expr as well)
-A_RETN = "$:,(`"    # Always return a value
+#A_RETN = "$:,(`"    # Always return a value
 EITHER = "-+~#"     # opers that either return a value or receive a value
 RECI = "~#$@!:;.="  # opers that receive a value
-A_RECI = "$@!:;.="  # Always tries to receive a value
+#A_RECI = "$@!:;.="  # Always tries to receive a value
 BRAC = "{[()]}"     # The brackets
 L_BRAC = "{[("
 R_BRAC = ")]}"
@@ -26,25 +26,26 @@ class Env:
         self.MX = [[0 for i in range(TP_S)] for i in range(MX_S)]
         # Array for tapes
         self.TPS = [0, 0]                # Tape Pointer Stack
-        #      ^ |^
-        #old tape|new tape (current)
+        #           ^ |^
+        #old tape     |new tape (current)
         self.RPS = [0, 0, 0, 0] # Register Pointer Stack
         self.expr_tape = ExprTape()
         self.FT = {}            # Function Reference
         #self.structs = []
 
-    def get_type(self): return "Env"
+    def get_type(self): return self.__class__.__name__
 
-    def get_val(self, index=None, cur=True):
+    def get_val(self, cur=True, index=None):
         return self.MX[self.get_TP(cur)][index or self.get_RP(cur)]
 
-    def set_val(self, value, index=None, cur=True):
+    def set_val(self, value, cur=True, index=None):
         self.MX[self.get_TP(cur)][index or self.get_RP(cur)] = value
 
     def get_TP(self, cur=True):             # For ~
         return self.TPS[cur]
 
     def set_TP(self, tape_num):             # For ~
+        if tape_num == -1: tape_num = self.get_TP(False)
         self.TPS.append(tape_num % MX_S)
         self.TPS.pop(0)
 
@@ -62,20 +63,28 @@ class Env:
     def set_expr_tape(self, expr_tape):
         self.expr_tape = expr_tape
 
+    def get_tape_right(self, index=None):
+        start = self.get_RP() if index == None else index
+        return [self.get_val(index=i) for i in range(start, start + 8)]
+
+    def set_tape_right(self, tape, index=None):
+        start = self.get_RP() if index == None else index
+        for i in range(start, start + 8): self.set_val(tape[i], index=i) 
+
     def move(self, diff):                   # For <>
         self.set_RP(self.get_RP() + diff)
 
-    def add_cur_to_last(self, value):      # For @
-        self.set_val(value + self.get_val(cur=False), cur=False)    #TODO
+    def add_cur_to_last(self, value):      # For !
+        self.set_val(value + self.get_val(False), False)    #TODO
 
-    def add_last_to_cur(self, value):      # For !
-        self.set_val(value + self.get_val())
+    #def add_last_to_cur(self, value):      # For !
+    #    self.set_val(value + self.get_val())
 
-    def call_by_ind(self, ref, env):
-        return parse(expr[self.FT[ref]], env, self, env.structs[self.FT[ref]])
+    #def call_by_ind(self, ref, env):
+    #    return parse(expr[self.FT[ref]], env, self, env.structs[self.FT[ref]])
 
-    def defun_by_ind(self, ref, start_ind, end_ind):
-        self.FT[ref] = slice(start_ind, end_ind)
+    #def defun_by_ind(self, ref, start_ind, end_ind):
+    #    self.FT[ref] = slice(start_ind, end_ind)
 
     def defun_by_expr(self, ref, expr):     # For {}
         self.FT[ref] = expr
@@ -92,9 +101,9 @@ class ExprTape:
         #self.expr_tape = ExprTape()
 
     def __repr__(self):
-        return "tape(%s)" % ", ".join((str(i) for i in self.tape))
+        return "tape(%s)" % str(tuple(self.tape))
 
-    def get_type(self): return "tape"
+    def get_type(self): return self.__class__.__name__
 
     def get_val(self, index=None):
         return self.tape[index or self.RP]
@@ -110,8 +119,8 @@ class ExprTape:
     def get_RP(self):
         return self.RP
 
-    def set_tape(self, tape):
-        self.tape = tape
+    #def set_tape(self, tape):
+    #    self.tape = tape
 
     def get_tape(self):
         return self.tape
@@ -199,10 +208,10 @@ def LOG(log_t, event_t, message):
         raise Exception
     return retn
 
-def equi(byte1, byte2):
-    is_brac = BRAC.index(byte1) + BRAC.index(byte2) == 5
-    is_cond = byte1 in "?!$" and byte2 in "?!$"
-    return is_brac or is_cond or byte1 == byte2
+#def equi(byte1, byte2):
+#    is_brac = BRAC.index(byte1) + BRAC.index(byte2) == 5
+#    is_cond = byte1 in "?!$" and byte2 in "?!$"
+#    return is_brac or is_cond or byte1 == byte2
 
 def test(expr, env, glob_env):
     """
@@ -416,17 +425,16 @@ def bi_eval(oper, param, env, glob_env):
         if type(param) != list:
             exec("env.set_val(env.get_val() %s %d)" % \
                 (op, param if has_param else (1 if oper in "+-" else 2)))
-        elif len(param) == 8:
-            env.set_tape_right([eval("i %s v" % op) \
-                for i, v in zip(env.get_tape_right(), param)])
+        elif len(param) == 8: env.set_tape_right([eval("i %s v" % op) \
+                            for i, v in zip(env.get_tape_right(), param)])
     elif oper in "<>": env.move((ord(oper) - 61) * \
             (param if has_param else 1))
-    elif oper == "$": return env.get_val(param)
-    elif oper == "@": return glob_env.get_val(param)
+    elif oper == "$": return env.get_val(index=param)
+    elif oper == "@": return glob_env.get_val(index=param)
     elif oper == ".": putchar(param or env.get_val())
     elif oper == ",": env.set_val(ord(sys.stdin.read(1)))
-    elif oper == "`": return env.expr_tape.get_val()
-    elif oper == "&": return env.expr_tape.get_tape()
+    elif oper == "`": return glob_env.expr_tape.get_val()
+    elif oper == "&": return glob_env.expr_tape.get_tape()
     elif oper == "~":
         if has_param:
             LOG(3, 0, "Tape number requested: %d" % param)
