@@ -37,7 +37,7 @@ def run_console():
         except (EOFError, KeyboardInterrupt): sys.exit(print())
 
 def run_file(filename):
-    try: execute(open(filename, "r").read())
+    try: execute(open(filename).read())
     except IOError: sys.exit(print("%s: cannot find %s: no such file" % \
                 (sys.argv[0], filename)))
 
@@ -98,8 +98,8 @@ def execute(IT):                    # The instruction tape
         diff = 0
         if char in '-+':   add(int(char + '1'))
         elif char in '<>': mov(ord(char) - 61)
-        elif char == '[': if cur_val() == 0: IP = loop_tape[IP]
-        elif char == ']': if cur_val() != 0: IP = loop_tape[IP]
+        elif char == '[' and cur_val() == 0: IP = loop_tape[IP]
+        elif char == ']' and cur_val() != 0: IP = loop_tape[IP]
         elif char == '(':
             func_tape[cur_val()] = IP
             IP = loop_tape[IP]
@@ -146,7 +146,7 @@ Use {prog} [code] to run code directly
 """.format(prog=sys.argv[0]))
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3: if sys.argv[1] == '-f': run_file(sys.argv[2])
+    if len(sys.argv) == 3 and sys.argv[1] == '-f': run_file(sys.argv[2])
     if len(sys.argv) == 2:
         if sys.argv[1] == '-h':
             usage()

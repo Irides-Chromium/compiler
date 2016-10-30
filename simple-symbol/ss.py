@@ -8,7 +8,7 @@ ALL = "-+*/^%<>~`!@#$={[()]},.;:?"
 BI_PAR = "~#@$%^!*+-<>:,.=/&`"  # Bi-parsable
 OPER = "-+*/^%<>"   # "Operators"
 MATH_OP = "-+*/^*"  # Math operators
-RETN = "-+~#$:,(`"  # opers that return a value (an expr as well)
+RETN = "~#$:,(`"  # opers that return a value (an expr as well)
 #A_RETN = "$:,(`"    # Always return a value
 EITHER = "-+~#"     # opers that either return a value or receive a value
 RECI = "~#$@!:;.="  # opers that receive a value
@@ -106,6 +106,7 @@ class ExprTape:
     def get_type(self): return self.__class__.__name__
 
     def get_val(self, index=None):
+        print("DEBUG::index::", index or self.RP)
         return self.tape[index or self.RP]
 
     def set_val(self, value, index=None):
@@ -342,7 +343,8 @@ def parse(expr, env, glob_env, structs=None):
                         #print("OTHER_END::", expr[IP])
                     elif c == "[":
                         while env.get_val() != 0:
-                            parse_expr(expr[new_IP:other_end], env, \
+                            #print("VALUE::", env.get_val())
+                            parse(expr[new_IP:other_end], env, \
                                     glob_env, structs[new_IP:other_end])
                     elif c == "{": glob_env.defun_by_expr(env.get_val(), \
                                 expr[new_IP:other_end])
@@ -379,9 +381,11 @@ def parse_expr(expr, glob_env, structs=None, ret_tape=False):
     expr_tape = ExprTape()
     set_expr = True
     #print("parse_expr::expr::", expr)
-    if expr[0] == "!":
-        set_expr = False
-        expr = expr[1:]
+    flags = re.match("[&!]*", expr).group(0)
+    if "!" in flags: set_expr = False
+    if "&" in flags: ret_tape = True
+    expr = expr[len(flags):]
+    print("AFTER FLAGS::", expr)
     parse(expr, expr_tape, glob_env, structs)
     if set_expr: glob_env.set_expr_tape(expr_tape)
     if ret_tape: return expr_tape.get_tape()
@@ -407,7 +411,7 @@ def bi_parsable(expr, index):
 
     # Bi-parsing type of oper that receive an param
             # no two successive opers can be parsed
-    if re.match("[%s%s][%s%s]" % (OPER, RECI, MATH_OP, RETN), bi_expr) \
+    if re.match("[%s][%s]" % (OPER + RECI, RETN), bi_expr) \
             and not re.match("[%s][%s]" % (OPER, OPER), bi_expr): return 2
 
 def bi_eval(oper, param, env, glob_env):
@@ -466,3 +470,30 @@ def bi_eval(oper, param, env, glob_env):
     #        print()
 
     return 0
+
+if __name__ == "__main__":
+    intera = False      # Interactive mode or read from stdin
+    sources = []        # Files for sourcing
+    file = ""           # File for executing
+    env = Env()
+    i = 0
+    argv = sys.argv[1:]
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "-i": intera = True
+        elif arg == "-s":
+            i += 1
+            sources.append(argv[i])
+        elif arg == "-f":
+            i += 1
+            file = argv[i]
+        i += 1
+    if file: parse(open(file).read(), env, env)
+    elif intera:
+        print("Simple Symbol 1.0.0 by Steven Zhu")
+        while True:
+            try: parse(input(">>> "), env, env)
+            except (EOFError, KeyboardInterrupt): sys.exit(print("Bye!"))
+    else:
+        try: parse(sys.stdin.read(), env, env)
+        except KeyboardInterrupt: sys.exit(print())
