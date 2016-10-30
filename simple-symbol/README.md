@@ -16,11 +16,11 @@ Python3 uses Unicode for encoding, which is different from the original C-writte
 0. byte description
 1.  `~` switch between tapes.
 2.  `#` jump to a cell or return the cell number.
-3.  `@` add the value of current cell or a value to the one in another tape.
-4.  `$` return the value of one cell (index specified or current).
+3.  `@` return the value of one cell (index specified or current) in the tape.
+4.  `$` return the value of one cell (index specified or current) (can be in expression tape).
 5.  `%` set the current cell with a modulo (divisor specified or 2).
 6.  `^` set the current cell with a power (power specified or 2).
-7.  `!` add the value of the cell in another tape to the current cell (with index specified or the last cell).
+7.  `!` add the value of current cell or a value to the one in another tape.
 8.  `*` set the current cell with a mutiplication (factor specified or 2).
 9.  `{` starts the definition of a *function* (not procedure).
 10. `}` ends the definition of a *function* (not procedure).
@@ -42,70 +42,70 @@ Python3 uses Unicode for encoding, which is different from the original C-writte
 
 And there are some special expressions, which will be explained later.
 
-### Behaviour and types of the params.
+### Behaviour and types of the operators.
 
-    +------+-----------+----------+--------+---------+---------+
-    |      | number of | implicit |  explicit param  | default |
-    | byte |  params   |  params  | number | present |  value  |
-    +------+-----------+----------+--------+---------+---------+
-    | `~`  |     1     |    0     |   1    |    0    |  next   |
-    +------+-----------+----------+--------+---------+---------+
-    | `#`  |     1     |    0     |   1    |    0    |no effect|
-    +------+-----------+----------+--------+---------+---------+
-    | `@`  |     1     |    0     |   1    |    0    |  cell   |
-    +------+-----------+----------+--------+---------+---------+
-    | `$`  |     1     |    0     |   1    |    0    |  cell   |
-    +------+-----------+----------+--------+---------+---------+
-    | `%`  |     2     |    1     |   1    |    0    |    2    |
-    +------+-----------+----------+--------+---------+---------+
-    | `^`  |     2     |    1     |   1    |    0    |    2    |
-    +------+-----------+----------+--------+---------+---------+
-    | `!`  |     1     |    0     |   1    |    0    |  next   |
-    +------+-----------+----------+--------+---------+---------+
-    | `*`  |     2     |    1     |   1    |    0    |    2    |
-    +------+-----------+----------+--------+---------+---------+
-    | `{`  |     0     |    0     |   0    |  none   |  none   |
-    +------+-----------+----------+--------+---------+---------+
-    | `}`  |     0     |    0     |   0    |  none   |  none   |
-    +------+-----------+----------+--------+---------+---------+
-    | `+`  |     2     |    1     |   1    |    0    |    1    |
-    +------+-----------+----------+--------+---------+---------+
-    | `-`  |     2     |    1     |   1    |    0    |    1    |
-    +------+-----------+----------+--------+---------+---------+
-    | `<`  |     1     |    1     |   1    |    0    |    1    |
-    +------+-----------+----------+--------+---------+---------+
-    | `>`  |     1     |    1     |   1    |    0    |    1    |
-    +------+-----------+----------+--------+---------+---------+
-    | `[`  |     0     |    0     |   0    |  none   |  none   |
-    +------+-----------+----------+--------+---------+---------+
-    | `]`  |     0     |    0     |   0    |  none   |  none   |
-    +------+-----------+----------+--------+---------+---------+
-    | `(`  |     0     |    0     |   0    |  none   |  none   |
-    +------+-----------+----------+--------+---------+---------+
-    | `)`  |     0     |    0     |   0    |  none   |  none   |
-    +------+-----------+----------+--------+---------+---------+
-    | `:`  |     1     |    0     |   1    |    0    |  cell   |
-    +------+-----------+----------+--------+---------+---------+
-    | `;`  |     1     |    0     |   1    |    0    |  cell   |
-    +------+-----------+----------+--------+---------+---------+
-    | `,`  |     1     |    0     |   0    |  none   |  none   |
-    +------+-----------+----------+--------+---------+---------+
-    | `.`  |     1     |    0     |   1    |    0    |  cell   |
-    +------+-----------+----------+--------+---------+---------+
-    | `=`  |     1     |    0     |   1    |    0    |  cell   |
-    +------+-----------+----------+--------+---------+---------+
-    | `?`  |     4     |    0     |   3    |    1    |  none   |
-    +------+-----------+----------+--------+---------+---------+
-    | `/`  |     2     |    1     |   1    |    0    |    2    |
-    +------+-----------+----------+--------+---------+---------+
+    +------+-----------+----------+--------+---------+
+    |      | number of | implicit |explicit| default |
+    | byte |  params   |  params  | params |  value  |
+    +------+-----------+----------+--------+---------+
+    | `~`  |     1     |    0     |   1    |no effect|
+    +------+-----------+----------+--------+---------+
+    | `#`  |     1     |    0     |   1    |no effect|
+    +------+-----------+----------+--------+---------+
+    | `@`  |     1     |    0     |   1    |  cell   |
+    +------+-----------+----------+--------+---------+
+    | `$`  |     1     |    0     |   1    |  cell   |
+    +------+-----------+----------+--------+---------+
+    | `%`  |     2     |    1     |   1    |    2    |
+    +------+-----------+----------+--------+---------+
+    | `^`  |     2     |    1     |   1    |    2    |
+    +------+-----------+----------+--------+---------+
+    | `!`  |     1     |    0     |   1    |  cell   |
+    +------+-----------+----------+--------+---------+
+    | `*`  |     2     |    1     |   1    |    2    |
+    +------+-----------+----------+--------+---------+
+    | `{`  |     0     |    0     |   0    |  none   |
+    +------+-----------+----------+--------+---------+
+    | `}`  |     0     |    0     |   0    |  none   |
+    +------+-----------+----------+--------+---------+
+    | `+`  |     2     |    1     |   1    |    1    |
+    +------+-----------+----------+--------+---------+
+    | `-`  |     2     |    1     |   1    |    1    |
+    +------+-----------+----------+--------+---------+
+    | `<`  |     1     |    1     |   1    |    1    |
+    +------+-----------+----------+--------+---------+
+    | `>`  |     1     |    1     |   1    |    1    |
+    +------+-----------+----------+--------+---------+
+    | `[`  |     0     |    0     |   0    |  none   |
+    +------+-----------+----------+--------+---------+
+    | `]`  |     0     |    0     |   0    |  none   |
+    +------+-----------+----------+--------+---------+
+    | `(`  |     0     |    0     |   0    |  none   |
+    +------+-----------+----------+--------+---------+
+    | `)`  |     0     |    0     |   0    |  none   |
+    +------+-----------+----------+--------+---------+
+    | `:`  |     2     |    1     |   1    |  cell   |
+    +------+-----------+----------+--------+---------+
+    | `;`  |     2     |    1     |   1    |  cell   |
+    +------+-----------+----------+--------+---------+
+    | `,`  |     1     |    0     |   0    |  none   |
+    +------+-----------+----------+--------+---------+
+    | `.`  |     1     |    0     |   1    |  cell   |
+    +------+-----------+----------+--------+---------+
+    | `=`  |     1     |    0     |   1    |  cell   |
+    +------+-----------+----------+--------+---------+
+    | `?`  |     4     |    0     |   3    |  none   |
+    +------+-----------+----------+--------+---------+
+    | `/`  |     2     |    1     |   1    |    2    |
+    +------+-----------+----------+--------+---------+
 
 *NOTE:* If one param has an implicit param, it means it operates on the current cell. If one param has an explicit param, it means the next byte *may* be parsed. Present means "need to be present". 0 means no, 1 means yes, none means there is no explicit param. For the default value, "cell" means default cell, "none" means there is no explicit param, "no effect" means no default value, others are indicated as numbers.
 
 ### Registers (cells)
 
-The Simple-Symble language has 3 register types: the tape registers, one expression register and one pointer register. The expression register is used when an expression after a operator is used. The operators in the expression do their operations as normal, but instead of the tape cells, they operate on the expression cell. And, the expression cell would keep its value until the next expression. In the next ()-expression (i.e. expression enclosed by `(` and `)`), an expression of `$_` will hold the old expression cell value.
+The Simple-Symble language has 3 register types: the tape registers, one expression register and one pointer register. The expression register is used when an expression enclosed in `()` is used. The operators in the expression do their operations as normal, but instead of the tape cells, they operate on the expression cell. And, the expression cell would keep its value until the next expression. In the next ()-expression (i.e. expression enclosed by `(` and `)`), an expression of `&` will hold the old expression value, and `\`` will hold the value of the old expression where the pointer was at.
 
-The pointer register is a read-only register, but its value changes if there is `<` or `>` operations. Its value can be retrived using `#`.
+The pointer register is a read-only register, but its value changes if there is `<` or `>` operations. Its value can be retrived using `#` with no parameter.
 
 The tape registers are the ones where operations take place. In the behaviour table above, the ones which has a implicit param often set the value of the current register. The value of any tape registers can be retrived using `$`, with a index specified. The value of the current register can be retrived using only `$`, or `$#`.
 
@@ -131,7 +131,7 @@ Some of the operators are overloaded. There are two types of meaning of the oper
 
 When an calculation operator is in operation, the cell are changed according to this:
 
-cell {calc}= expr
+    cell {calc}= expr
 
 where {calc} is one of the calculation operators (`+`, `-`, `/`, `*`, `%`, `^`), and expr is a expression or none.
 
