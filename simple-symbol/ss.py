@@ -2,13 +2,13 @@
 TP_S = 1024
 MX_S = 4
 
-import sys, re
+import sys, re, random
 from putchar import putchar
 ALL = "-+*/^%<>~`!@#$={[()]},.;:?"
 BI_PAR = "~#@$%^!*+-<>:,.=/&`"  # Bi-parsable
 OPER = "-+*/^%<>"   # "Operators"
 MATH_OP = "-+*/^*"  # Math operators
-RETN = "~#$:,(`"  # opers that return a value (an expr as well)
+RETN = "~#$:,(`_"   # opers that return a value (an expr as well)
 #A_RETN = "$:,(`"    # Always return a value
 EITHER = "-+~#"     # opers that either return a value or receive a value
 RECI = "~#$@!:;.="  # opers that receive a value
@@ -106,7 +106,7 @@ class ExprTape:
     def get_type(self): return self.__class__.__name__
 
     def get_val(self, index=None):
-        print("DEBUG::index::", index or self.RP)
+        #print("DEBUG::index::", index or self.RP)
         return self.tape[index or self.RP]
 
     def set_val(self, value, index=None):
@@ -200,8 +200,8 @@ def LOG(log_t, event_t, message):
     # Fatal, Warning, Debug, Info, Verbose
     return_val = "32000"
     event = ["MEM Management", "Brackets", "Expression"]
-    #print("".join((log[log_t], "/[", event[event_t], "]: ", message)), \
-    #        file=stderr)
+    print("".join((log[log_t], "/[", event[event_t], "]: ", message)), \
+            file=stderr)
     retn = int(return_val[log_t])
     if retn > 0:
         if stderr != sys.stderr: stderr.close()
@@ -288,9 +288,9 @@ def struct_scan(expr):
                             struct.set_indexes([i+IP+3 if i > -1 else -1 \
                                     for i in struct.get_indexes()])
                     structs[IP + 3:new_IP] = brac_structs
-                else: new_IP = get_parsable_length(expr[IP + 3:]) + new_IP
+                else: new_IP = get_parsable_length(expr[new_IP:]) + new_IP
                 #print("struct_scan::expr[IP+3:new_IP]::", expr[IP + 3:new_IP])
-                #print("IDENTIFIER::", expr[new_IP])
+                print("IDENTIFIER::", expr[new_IP])
                 if expr[new_IP] == "[": struct_t = "?["
                 structs[IP] = brac_t(struct_t, "start", IP)
                 unmatched += [[IP, struct_t]]
@@ -325,7 +325,7 @@ def parse(expr, env, glob_env, structs=None):
     IP = 0
     while IP < len(expr):
         new_IP = get_parsable_length(expr[IP:]) + IP
-        #print("COND SCAN1::", expr[IP:new_IP])
+        print("parsable_expr::", expr[IP:new_IP])
         parsable_expr = expr[IP:new_IP]
         if parsable_expr[0] != "?":
             param = None
@@ -356,6 +356,7 @@ def parse(expr, env, glob_env, structs=None):
             if expr[new_IP] == "(":
                 new_IP = structs[new_IP].get_other_end() + 1
             else: new_IP = get_parsable_length(expr[new_IP:]) + new_IP
+            print("DEBUG::", expr[IP:new_IP])
             # ?>>$$~
             #print("COND SCAN2::", expr[IP:new_IP])
             struct = structs[IP]
@@ -385,7 +386,7 @@ def parse_expr(expr, glob_env, structs=None, ret_tape=False):
     if "!" in flags: set_expr = False
     if "&" in flags: ret_tape = True
     expr = expr[len(flags):]
-    print("AFTER FLAGS::", expr)
+    #print("AFTER FLAGS::", expr)
     parse(expr, expr_tape, glob_env, structs)
     if set_expr: glob_env.set_expr_tape(expr_tape)
     if ret_tape: return expr_tape.get_tape()
@@ -406,6 +407,7 @@ def get_parsable_length(expr):
 def bi_parsable(expr, index):
     bi_expr = expr[index:index + 4]
     if re.match("^\?(>=|==|<=|>>|<<|/=)[%s]$" % RETN, bi_expr): return 4
+    elif re.match("^\?(>=|==|<=|>>|<<|/=).", bi_expr): return 3
     bi_expr = expr[index:index + 2]
     if re.match("^\?[!$]$", bi_expr): return 2
 
@@ -438,7 +440,8 @@ def bi_eval(oper, param, env, glob_env):
     elif oper == ".": putchar(param or env.get_val())
     elif oper == ",": env.set_val(ord(sys.stdin.read(1)))
     elif oper == "`": return glob_env.expr_tape.get_val()
-    elif oper == "&": return glob_env.expr_tape.get_tape()
+    elif oper == "|": return glob_env.expr_tape.get_tape()
+    elif oper == "&": return random.randint(0, 65535)
     elif oper == "~":
         if has_param:
             LOG(3, 0, "Tape number requested: %d" % param)
@@ -446,54 +449,75 @@ def bi_eval(oper, param, env, glob_env):
         else: return env.get_TP()
     #elif oper == "!": env.add_last_to_cur(param or env.get_val(cur=False))
     elif oper == "!": env.add_cur_to_last(param or env.get_val())
-    elif oper == "#": return env.set_RP(param)
+    elif oper == "#":
+        if has_param: env.set_RP(param)
+        else: return env.get_RP()
     elif oper == ":": return glob_env.call_by_expr( \
             param if has_param else env.get_val(), env)
     #elif oper == ";": return param or env.get_val()
     elif oper == "=": sys.exit(param or env.get_val())
     #elif oper == "#":
-    #    print("Current tape: %d" % (env.CT + 1))
+    #    #print("Current tape: %d" % (env.CT + 1))
     #    for tape_num in [0, 1]:
-    #        print("Tape number: %d" % (tape_num + 1))
+    #        #print("Tape number: %d" % (tape_num + 1))
     #        ptr = env.RP[tape_num]
     #        lo = ptr - 5
     #        hi = ptr + 7
-    #        for index in range(lo, hi): print("%4d" % (index%TP_S), end='')
-    #        print()
+    #        for index in range(lo, hi): #print("%4d" % (index%TP_S), end='')
+    #        #print()
     #        for index in range(lo, hi):
-    #            print("%5d " % env.RT[tape_num][index % TP_S], \
+    #            #print("%5d " % env.RT[tape_num][index % TP_S], \
     #                    end='')
-    #        print()
+    #        #print()
     #        for index in range(lo, hi):
-    #            print("    ^ " if index == ptr else "      ", \
+    #            #print("    ^ " if index == ptr else "      ", \
     #                    end='')
-    #        print()
+    #        #print()
 
     return 0
+
+def usage():
+    print(
+"""Simple Symbol - a brainfuck like programming language by Steven Zhu.
+Usage: %s [-i | --intera] [-h | --help] [-f | --file file] [-s | --source source]
+Options:
+    -i, --intera    Enter interactive mode.
+    -h, --help      Show this help message and exit.
+    -f, --file      Run a specified file.
+    -s, --source    Source the file before running.
+When no option is supplied, the program will read code from stdin.""")
+    sys.exit()
 
 if __name__ == "__main__":
     intera = False      # Interactive mode or read from stdin
     sources = []        # Files for sourcing
-    file = ""           # File for executing
+    code = ""           # Code for executing
     env = Env()
     i = 0
     argv = sys.argv[1:]
     while i < len(argv):
         arg = argv[i]
-        if arg == "-i": intera = True
-        elif arg == "-s":
+        if arg == "-i" or arg == "--intera": intera = True
+        elif arg == "-s" or arg == "--source":
             i += 1
             sources.append(argv[i])
-        elif arg == "-f":
+        elif arg == "-f" or arg == "--file":
             i += 1
-            file = argv[i]
+            code = open(argv[i]).read()
+        elif arg == "-c" or arg == "--code":
+            i += 1
+            code = argv[i]
+        elif arg == "-h" or arg == "--help": usage()
         i += 1
-    if file: parse(open(file).read(), env, env)
-    elif intera:
+    if sources:
+        for file in sources: parse(open(source).read(), env, env)
+    if intera:
         print("Simple Symbol 1.0.0 by Steven Zhu")
         while True:
             try: parse(input(">>> "), env, env)
-            except (EOFError, KeyboardInterrupt): sys.exit(print("Bye!"))
+            except EOFError: sys.exit(print("\nBye!"))
+            except KeyboardInterrupt: print()
     else:
-        try: parse(sys.stdin.read(), env, env)
+        if not code: code = sys.stdin.read()
+        try: parse(code, env, env)
         except KeyboardInterrupt: sys.exit(print())
