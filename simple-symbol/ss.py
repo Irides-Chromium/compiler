@@ -226,6 +226,7 @@ def test(expr, env, glob_env):
     cur_val = env.get_val()
     #print("cur_val::", cur_val)
     #print("VALUE EXPR::", expr[1:-1])
+    print("OUT OF parse_expr::", expr)
     val = parse_expr(expr[1:-1], env, glob_env)
     #print("test::val::", val)
 
@@ -250,6 +251,7 @@ def struct_scan(expr):
     while IP < len(expr):
         byte = expr[IP]
         #print("BYTE::", byte)
+        #print("UNMATCHED::", unmatched)
         if byte in L_BRAC:
             if byte == "[" and len(unmatched) and unmatched[-1][1] == "?[":
                 start, struct_t = unmatched[-1]
@@ -259,7 +261,6 @@ def struct_scan(expr):
             else:
                 unmatched += [[IP, byte]]
                 structs[IP] = brac_t(byte, "start", IP)
-            #print("UNMATCHED::", unmatched)
         elif byte in R_BRAC:
             start, struct_t = unmatched.pop()
             structs[IP] = brac_t(struct_t, "end", IP)
@@ -269,37 +270,36 @@ def struct_scan(expr):
                 mid = structs[start].get_index("mid")
                 structs[mid].set_index("end", IP)
                 structs[IP].set_index("mid", mid)
-            #print("UNMATCHED::", unmatched, "BYTE::", byte)
         elif byte == '?':
             if expr[IP + 1] not in "!$":
                 struct_t = "?"
-                new_IP = IP + 3
-                if expr[new_IP] == "(":
-                    level = 0
+                new_IP = get_parsable_length(expr[IP:]) + IP
+                #print("AFTER GET::", expr[IP:IP + 3])
+                if expr[new_IP - 1] == "(":
+                    count = 1
                     while True:
                         _byte = expr[new_IP]
-                        if _byte in L_BRAC: level += 1
-                        elif _byte in R_BRAC: level -= 1
+                        if _byte in L_BRAC: count += 1
+                        elif _byte in R_BRAC: count -= 1
                         new_IP += 1
-                        if not level: break
+                        if not count: break
                     brac_structs = struct_scan(expr[IP + 3:new_IP])
                     for struct in brac_structs:
                         if struct:
                             struct.set_indexes([i+IP+3 if i > -1 else -1 \
                                     for i in struct.get_indexes()])
                     structs[IP + 3:new_IP] = brac_structs
-                else: new_IP = get_parsable_length(expr[new_IP:]) + new_IP
+                elif expr[new_IP - 1] in RETN:
+                    new_IP = get_parsable_length(expr[new_IP:]) + new_IP
                 #print("struct_scan::expr[IP+3:new_IP]::", expr[IP + 3:new_IP])
-                print("IDENTIFIER::", expr[new_IP])
+                #print("IDENTIFIER::", expr[new_IP])
                 if expr[new_IP] == "[": struct_t = "?["
                 structs[IP] = brac_t(struct_t, "start", IP)
                 unmatched += [[IP, struct_t]]
-                #print("UNMATCHED::", unmatched)
                 IP = new_IP - 1
                 #print("LAST CHAR::", expr[IP])
             else:
                 if expr[IP + 1] == "!":
-                    #print("UNMATCHED::", unmatched)
                     #print("BEFORE Excep::", structs, unmatched)
                     start, struct_t = unmatched[-1]
                     structs[start].set_index("mid", IP)
@@ -325,7 +325,7 @@ def parse(expr, env, glob_env, structs=None):
     IP = 0
     while IP < len(expr):
         new_IP = get_parsable_length(expr[IP:]) + IP
-        print("parsable_expr::", expr[IP:new_IP])
+        #print("parsable_expr::", expr[IP:new_IP])
         parsable_expr = expr[IP:new_IP]
         if parsable_expr[0] != "?":
             param = None
@@ -338,8 +338,10 @@ def parse(expr, env, glob_env, structs=None):
                 elif c in L_BRAC:
                     other_end = structs[new_IP - 1].get_other_end()
                     if c == "(":
-                        param = parse_expr(expr[new_IP:other_end], env, \
+                        print("OTHER_END::", other_end)
+                        param = parse_expr(expr[new_IP:other_end], \
                                 glob_env, structs[new_IP:other_end])
+                        #print("param::", param)
                         #print("OTHER_END::", expr[IP])
                     elif c == "[":
                         while env.get_val() != 0:
@@ -356,7 +358,7 @@ def parse(expr, env, glob_env, structs=None):
             if expr[new_IP] == "(":
                 new_IP = structs[new_IP].get_other_end() + 1
             else: new_IP = get_parsable_length(expr[new_IP:]) + new_IP
-            print("DEBUG::", expr[IP:new_IP])
+            #print("DEBUG::", expr[IP:new_IP])
             # ?>>$$~
             #print("COND SCAN2::", expr[IP:new_IP])
             struct = structs[IP]
@@ -365,10 +367,11 @@ def parse(expr, env, glob_env, structs=None):
                 conseq = slice(new_IP, indexes[1])
                 alt = slice(0) if len(indexes) == 2 \
                                 else slice(indexes[1] + 2, indexes[2])
+                #print("SLICES::", expr[conseq], expr[alt])
                 expr_slice = conseq \
                         if test(expr[IP + 1:new_IP], env, glob_env) \
                         else alt
-                #print("CONSEQ::", conseq, "ALT::", alt)
+                print("CONSEQ::", expr[expr_slice])
                 parse(expr[expr_slice], env, glob_env, structs[expr_slice])
             elif struct.byte == "?[":
                 loop_range = slice(indexes[1] + 1, indexes[2])
@@ -381,10 +384,10 @@ def parse(expr, env, glob_env, structs=None):
 def parse_expr(expr, glob_env, structs=None, ret_tape=False):
     expr_tape = ExprTape()
     set_expr = True
-    #print("parse_expr::expr::", expr)
-    flags = re.match("[&!]*", expr).group(0)
+    print("parse_expr::expr::", expr)
+    flags = re.match("[|!]*", expr).group(0)
     if "!" in flags: set_expr = False
-    if "&" in flags: ret_tape = True
+    if "|" in flags: ret_tape = True
     expr = expr[len(flags):]
     #print("AFTER FLAGS::", expr)
     parse(expr, expr_tape, glob_env, structs)
@@ -489,35 +492,43 @@ When no option is supplied, the program will read code from stdin.""")
     sys.exit()
 
 if __name__ == "__main__":
-    intera = False      # Interactive mode or read from stdin
-    sources = []        # Files for sourcing
-    code = ""           # Code for executing
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--intera", help="Enter interactive mode.", 
+            action="store_true")
+    parser.add_argument("-s", "--source", help="Source the file.",
+            action="append")
+    parser.add_argument("-f", "--file", help="Run the file.")
+    parser.add_argument("-c", "--code", help="Run the code.")
+    args = parser.parse_args()
     env = Env()
-    i = 0
-    argv = sys.argv[1:]
-    while i < len(argv):
-        arg = argv[i]
-        if arg == "-i" or arg == "--intera": intera = True
-        elif arg == "-s" or arg == "--source":
-            i += 1
-            sources.append(argv[i])
-        elif arg == "-f" or arg == "--file":
-            i += 1
-            code = open(argv[i]).read()
-        elif arg == "-c" or arg == "--code":
-            i += 1
-            code = argv[i]
-        elif arg == "-h" or arg == "--help": usage()
-        i += 1
-    if sources:
+    #i = 0
+    #argv = sys.argv[1:]
+    #while i < len(argv):
+    #    arg = argv[i]
+    #    elif arg == "-s" or arg == "--source":
+    #        i += 1
+    #        sources.append(argv[i])
+    #    elif arg == "-f" or arg == "--file":
+    #        i += 1
+    #        code = open(argv[i]).read()
+    #    elif arg == "-c" or arg == "--code":
+    #        i += 1
+    #        code = argv[i]
+    #    elif arg == "-h" or arg == "--help": usage()
+    #    i += 1
+    if args.source:
         for file in sources: parse(open(source).read(), env, env)
-    if intera:
+    if args.intera:
         print("Simple Symbol 1.0.0 by Steven Zhu")
         while True:
             try: parse(input(">>> "), env, env)
             except EOFError: sys.exit(print("\nBye!"))
             except KeyboardInterrupt: print()
     else:
-        if not code: code = sys.stdin.read()
+        code = args.code
+        if not code:
+            try: code = sys.stdin.read()
+            except KeyboardInterrupt: sys.exit(print())
         try: parse(code, env, env)
         except KeyboardInterrupt: sys.exit(print())

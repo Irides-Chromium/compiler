@@ -3,7 +3,7 @@ The Simple Symbol Programming Language
 
 # Introduction
 
-This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of something like `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has about 25 operators (they are all symbols), four tapes, and one special register.
+This is the first programming language that I write. After completing the [Brainfuck Interpreter](https://github.com/Irides-Chromium/compiler/bf_interpreter/) and some further extensions, I discover that writing a interpreter like that isn't that hard. Unlike languages like C, it has only one byte for every instruction instead of something like `char`, for example. So, inspired by brainfuck, I want to write a language myself, and I try to make it as simple as brainfuck, but not that *brainfuck*. It currently has 28 operators (they are all symbols), four tapes, and one special cell.
 
 Python3 uses Unicode for encoding, which is different from the original C-written interpreter using ascii for encoding. So I add the `putchar` module so that it will work more like the original version. If the `import putchar` line doesn't work properly, try to use the distribution package [here](https://github.com/Irides-Chromium/python_modules/tree/master/modules) to install compile and install the library.
 
@@ -41,7 +41,7 @@ For those who has already played with [brainfuck](https://en.wikipedia.org/wiki/
 23. `=` exit the program (value specified or current cell).
 24. `?` if, current cell examined.
 25. `/` set the current cell with a division (divisor specified or 2).
-26. `\`` return the last expression value.
+26. `\` return the last expression value.
 27. `|` return the last expression.
 28. `&` return a random integer between 0 and 65536.
 
@@ -103,7 +103,7 @@ And there are some special expressions, which will be explained later.
     +------+-----------+----------+----------+---------+
     | `/`  |     2     |    1     |    1     |    2    |
     +------+-----------+----------+----------+---------+
-    | `\``  |     0     |    0     |    0     |no effect|
+    | ```  |     0     |    0     |    0     |no effect|
     +------+-----------+----------+----------+---------+
     | `|`  |     0     |    0     |    0     |no effect|
     +------+-----------+----------+----------+---------+
@@ -112,19 +112,32 @@ And there are some special expressions, which will be explained later.
 
 *NOTE:* If one param has an implicit param, it means it operates on the current cell. If one param has an explicit param, it means the next byte *may* be parsed. Present means "need to be present". 0 means no, 1 means yes, none means there is no explicit param. For the default value, "cell" means default cell, "none" means there is no explicit param, "no effect" means no default value, others are indicated as numbers.
 
-## Registers (cells)
+*NOTE2:* This form is showing the *most* situation, i.e. the situation that has the most parameters.
 
-The Simple-Symble language has 3 register types: the tape registers, one expression register and one pointer register.
+## Cells
 
-The tape registers are just cells on the tapes. There are 4 tapes in total, and 1024 cells on each tape. You can switch tapes using `~`. When feeding a parameter to it, it would switch to the number you specified, throw an error if the number is too large or too small, switch to the last tape if the number is -1.
+The Simple-Symble language has 3 cell types: the tape cells, one expression cell and one pointer cell.
 
-The expression register is used when an expression enclosed in `()` is used. It is actually a tape of only 8 cells. The operators in the expression do their operations as normal, but instead of the tape cells, they operate on the expression cell. And, the expression cell would keep its value until the next expression. In the next ()-expression (i.e. expression enclosed by `(` and `)`), an expression of `|` will hold the old expression value, and `\`` will hold the value of the old expression where the pointer was at.
+### Tape Cells
+The tape cells are just cells on the tapes. There are 4 tapes in total, and 1024 cells on each tape. You can switch tapes using `~`. When feeding a parameter to it, it would switch to the number you specified, throw an error if the number is too large or too small, switch to the last tape if the number is -1.
 
-The pointer register is a read-only register, but its value changes if there is `<` or `>` operations. Its value can be retrived using `#` with no parameter.
+### Expression Cell
+The expression cell is used when an expression enclosed in `()` is used. It is actually a tape of only 8 cells. The operators in the expression do their operations as normal, but instead of the tape cells, they operate on the expression cell.
 
-The tape registers are the ones where operations take place. In the behaviour table above, the ones which has a implicit param operate on the value of the current cell. The value of any tape registers can be retrived using `$`, with a index specified. The value of the current register can be retrived using only `$`, or `$#`.
+#### Return Type
+A ()-expression typically returns a **value**. The same as normal tapes, the value returned is the value where the pointer is at. But it can also return a tape of itself. At the beginning of a ()-expression, a `|`, which is a flag, can set the returned to the tape.
 
-## Other syntax
+#### Retaining the Expression Value
+And, the expression cell would keep its value until the next expression. In the next ()-expression (i.e. expression enclosed by `(` and `)`), an expression of `|` will hold the old expression value, and ``` will hold the old expression value.
+
+Actually, always setting the expression is annoying. You can use the `!` flag to force the interpreter *not* set the expression.
+
+### Pointer Cell
+The pointer cell is a read-only cell, but its value changes if there is `<` or `>` operations. Its value can be retrived using `#` with no parameter.
+
+The tape cells are the ones where operations take place. In the behaviour table above, the ones which has a implicit param operate on the value of the current cell. The value of any tape cells can be retrived using `$`, with a index specified. The value of the current cell can be retrived using only `$`, or `$#`.
+
+## Other Syntax
 
 The Simple-Symble language uses a "binary-syntax": binary-parsing and binary-expression. Binary-expression means that an expression consists of two parts: the operator and an optional expression (as shown in the table above). The optional expression may be a single byte, or an expression enclosed by `(` and `)`. For a single-byte-expression, there are only a few bytes will work. For those which won't work, it is reserved for the next parsing and no syntax error comes out. This is called the "binary-parsing". A stand alone ()-expression (i.e. left from the last parsing) will have no meaning. Because there is no operation being operated (i.e. no operator with this expression was parsed).
 
@@ -134,11 +147,11 @@ In some situations, you may have one byte that is parsable for the previous one,
 
 *NOTE:* **parsable** means that the current byte and the next byte together is a valid expression. `++` is a sequence of `+` and will be parsed as `+(++)` (plus two to current cell, but more complicated than the former one), instead of a single valid expression, or the second `+` is **parsable** for the first `+` (you may call it as a *sequence of operators*, if you want, but `<>` are also included in this).
 
-The only syntax error that may occur is the matching problem. If there is no matching brackets (`()`, `[]`, `{}`), the interpreter will give an error. The brackets can be nested.
+The only syntax error that may occur is the matching problem. If there is no matching brackets (`()`, `[]`, `{}`) and structures for `?`, the interpreter will give an error. The brackets can be nested.
 
 ## Overloading
 
-Some of the operators are overloaded. There are two types of meaning of the operators: one is operation, and the other is expression. For instance, the operator `#` will jump to a register with index specified. But when there is no parameter, it will return the index of current register.
+Some of the operators are overloaded. There are two types of meaning of the operators: one is operation, and the other is expression. For instance, the operator `#` will jump to a cell with index specified. But when there is no parameter, it will return the index of current cell.
 
 # Structures
 
@@ -148,7 +161,7 @@ When an calculation operator is in operation, the cell are changed according to 
 
     cell {calc}= expr
 
-where {calc} is one of the calculation operators (`+`, `-`, `/`, `\*`, `%`, `^`), and expr is a expression or none.
+where {calc} is one of the calculation operators (`+`, `-`, `/`, `*`, `%`, `^`), and expr is a expression or none.
 
 ## Array
 
@@ -161,6 +174,8 @@ For example, a get from an array would be like this:
 if the tape is like this:
 
     0   index   arr[0]  arr[1]  arr[2] ...
+
+because consequtive `$`s are parsable.
 
 ## Conditionals
 
