@@ -1,14 +1,12 @@
 #!/usr/bin/python3
-TP_S = 1024
-MX_S = 4
 
 import sys, re, random
 from putchar import putchar
 ALL = "-+*/^%<>~`!@#$={[()]},.;:?"
-BI_PAR = "~#@$%^!*+-<>:,.=/&`"  # Bi-parsable
+BI_PAR = "~#@$%^!*+-<>:,.=/&`_"  # Bi-parsable
 OPER = "-+*/^%<>"   # "Operators"
-MATH_OP = "-+*/^*"  # Math operators
-RETN = "~#$:,(`_"   # opers that return a value (an expr as well)
+MATH_OP = "-+*/^%"  # Math operators
+RETN = "~@#$:,(`_&" # opers that return a value (an expr as well)
 #A_RETN = "$:,(`"    # Always return a value
 EITHER = "-+~#"     # opers that either return a value or receive a value
 RECI = "~#$@!:;.="  # opers that receive a value
@@ -20,10 +18,12 @@ R_BRAC = ")]}"
 stderr = sys.stderr         # DEBUG
 
 class Env:
+    TP_S = 1024
+    MX_S = 4
 
     def __init__(self):
 
-        self.MX = [[0 for i in range(TP_S)] for i in range(MX_S)]
+        self.MX = [[0 for i in range(self.TP_S)] for i in range(self.MX_S)]
         # Array for tapes
         self.TPS = [0, 0]                # Tape Pointer Stack
         #           ^ |^
@@ -36,17 +36,21 @@ class Env:
     def get_type(self): return self.__class__.__name__
 
     def get_val(self, cur=True, index=None):
-        return self.MX[self.get_TP(cur)][index or self.get_RP(cur)]
+        #print("INDEX REQ::", index)
+        index = self.get_RP(cur) if index == None else index % self.TP_S
+        #print("ACTUAL INDEX::", index)
+        return self.MX[self.get_TP(cur)][index]
 
     def set_val(self, value, cur=True, index=None):
-        self.MX[self.get_TP(cur)][index or self.get_RP(cur)] = value
+        index = self.get_RP(cur) if index == None else index % self.TP_S
+        self.MX[self.get_TP(cur)][index] = value
 
     def get_TP(self, cur=True):             # For ~
         return self.TPS[cur]
 
     def set_TP(self, tape_num):             # For ~
         if tape_num == -1: tape_num = self.get_TP(False)
-        self.TPS.append(tape_num % MX_S)
+        self.TPS.append(tape_num % self.MX_S)
         self.TPS.pop(0)
 
     def get_RP(self, cur=True):
@@ -55,7 +59,7 @@ class Env:
     def set_RP(self, index):
         #if index < 0: LOG(0, 0, "tape index undershot the tape." % TP_S)
         #if index >= TP_S: LOG(0, 0, "tape index exceeded the tape." % TP_S)
-        self.RPS[self.get_TP()] = index % TP_S
+        self.RPS[self.get_TP()] = index % self.TP_S
 
     def get_expr_tape(self):
         return self.expr_tape
@@ -90,6 +94,7 @@ class Env:
         self.FT[ref] = expr
 
     def call_by_expr(self, ref, env):       # For :
+        #print("FUNC REF::", ref)
         parse(self.FT[ref], env, self)
 
 class ExprTape:
@@ -115,7 +120,7 @@ class ExprTape:
     def set_RP(self, index):
         #if index >= TP_S: LOG(0, 0, "tape index exceeded the tape.")
         #elif index < 0: LOG(0, 0, "tape index undershot the tape.")
-        self.RP = index % TP_S
+        self.RP = index % self.TP_S
 
     def get_RP(self):
         return self.RP
@@ -220,13 +225,13 @@ def test(expr, env, glob_env):
     Used to eval the expression in a condition.
     Example: ">>(++++)"
     """
-    print("TESTING EXPR::", expr)
+    #print("TESTING EXPR::", expr)
     comp = expr[:2]
     expr = expr[2:]
     cur_val = env.get_val()
     #print("cur_val::", cur_val)
     #print("VALUE EXPR::", expr[1:-1])
-    print("OUT OF parse_expr::", expr)
+    #print("OUT OF parse_expr::", expr)
     val = parse_expr(expr[1:-1], env, glob_env)
     #print("test::val::", val)
 
@@ -236,6 +241,14 @@ def test(expr, env, glob_env):
 
     #print("EVAL EXPR::", "{:d}{}{:d}".format(cur_val, comp, val))
     return eval("{:d}{}{:d}".format(cur_val, comp, val))
+
+def trans_structs(structs, diff):       #TODO Change to diff mode
+    "Shift the indexes in a struct to fit deeper parse."
+    structs = structs.copy()
+    for struct in structs:
+        if struct: struct.set_indexes([i + diff if i > -1 else -1 \
+                    for i in struct.get_indexes()])
+    return structs
 
 def struct_scan(expr):
     """
@@ -253,13 +266,16 @@ def struct_scan(expr):
         #print("BYTE::", byte)
         #print("UNMATCHED::", unmatched)
         if byte in L_BRAC:
-            if byte == "[" and len(unmatched) and unmatched[-1][1] == "?[":
+            #if len(unmatched): print("BUG::", structs[unmatched[-1][0]])
+            if byte == "[" and len(unmatched) \
+                    and unmatched[-1][1] == "?[" \
+                    and not structs[unmatched[-1][0]].has_mid():
                 start, struct_t = unmatched[-1]
                 structs[IP] = brac_t("?[", "mid", IP)
                 structs[start].set_index("mid", IP)
                 structs[IP].set_index("start", start)
             else:
-                unmatched += [[IP, byte]]
+                unmatched.append([IP, byte])
                 structs[IP] = brac_t(byte, "start", IP)
         elif byte in R_BRAC:
             start, struct_t = unmatched.pop()
@@ -283,19 +299,15 @@ def struct_scan(expr):
                         elif _byte in R_BRAC: count -= 1
                         new_IP += 1
                         if not count: break
-                    brac_structs = struct_scan(expr[IP + 3:new_IP])
-                    for struct in brac_structs:
-                        if struct:
-                            struct.set_indexes([i+IP+3 if i > -1 else -1 \
-                                    for i in struct.get_indexes()])
-                    structs[IP + 3:new_IP] = brac_structs
+                    structs[IP + 3:new_IP] = trans_structs( \
+                            struct_scan(expr[IP + 3:new_IP]), IP + 3)
                 elif expr[new_IP - 1] in RETN:
                     new_IP = get_parsable_length(expr[new_IP:]) + new_IP
                 #print("struct_scan::expr[IP+3:new_IP]::", expr[IP + 3:new_IP])
                 #print("IDENTIFIER::", expr[new_IP])
                 if expr[new_IP] == "[": struct_t = "?["
                 structs[IP] = brac_t(struct_t, "start", IP)
-                unmatched += [[IP, struct_t]]
+                unmatched.append([IP, struct_t])
                 IP = new_IP - 1
                 #print("LAST CHAR::", expr[IP])
             else:
@@ -320,8 +332,8 @@ def struct_scan(expr):
     return structs
 
 def parse(expr, env, glob_env, structs=None):
-    if not structs: structs = struct_scan(expr)
-    #print("EXPR::", expr, "TYPE::", env.get_type())
+    structs = struct_scan(expr)
+    #print("PARSING EXPR::", expr)
     IP = 0
     while IP < len(expr):
         new_IP = get_parsable_length(expr[IP:]) + IP
@@ -337,19 +349,20 @@ def parse(expr, env, glob_env, structs=None):
                 if c in BI_PAR: param = bi_eval(c, param, env, glob_env)
                 elif c in L_BRAC:
                     other_end = structs[new_IP - 1].get_other_end()
+                    s = slice(new_IP, other_end)
                     if c == "(":
-                        print("OTHER_END::", other_end)
-                        param = parse_expr(expr[new_IP:other_end], \
-                                glob_env, structs[new_IP:other_end])
+                        #print("OTHER_END::", other_end)
+                        param = parse_expr(expr[s], glob_env, \
+                                trans_structs(structs[s], - new_IP))
                         #print("param::", param)
                         #print("OTHER_END::", expr[IP])
                     elif c == "[":
                         while env.get_val() != 0:
                             #print("VALUE::", env.get_val())
-                            parse(expr[new_IP:other_end], env, \
-                                    glob_env, structs[new_IP:other_end])
-                    elif c == "{": glob_env.defun_by_expr(env.get_val(), \
-                                expr[new_IP:other_end])
+                            parse(expr[s], env, glob_env, \
+                                    trans_structs(structs[s], - new_IP))
+                    elif c == "{":
+                        glob_env.defun_by_expr(env.get_val(), expr[s])
                     new_IP = other_end
                 elif c == ";": return param or env.get_val()
         else:
@@ -363,6 +376,10 @@ def parse(expr, env, glob_env, structs=None):
             #print("COND SCAN2::", expr[IP:new_IP])
             struct = structs[IP]
             indexes = [i for i in struct.get_indexes() if i > -1]
+            #print("STRUCTS::", structs)
+            #print("INDEXES::", indexes)
+            #print("EXPR::", expr)
+            #print("IP, new_IP::", expr[IP:new_IP])
             if struct.byte == "?":
                 conseq = slice(new_IP, indexes[1])
                 alt = slice(0) if len(indexes) == 2 \
@@ -371,20 +388,24 @@ def parse(expr, env, glob_env, structs=None):
                 expr_slice = conseq \
                         if test(expr[IP + 1:new_IP], env, glob_env) \
                         else alt
-                print("CONSEQ::", expr[expr_slice])
-                parse(expr[expr_slice], env, glob_env, structs[expr_slice])
+                #print("CONSEQ::", expr[conseq], "ALT::", expr[alt], "(%s)" % expr)
+                #print("SLICE::", expr[expr_slice])
+                parse(expr[expr_slice], env, glob_env, trans_structs( \
+                        structs[expr_slice], - expr_slice.start))
+                new_IP = structs[IP].get_other_end() + 1
             elif struct.byte == "?[":
                 loop_range = slice(indexes[1] + 1, indexes[2])
                 while test(expr[IP + 1:new_IP], env, glob_env):
-                    parse(expr[loop_range], env, glob_env, \
-                            structs[loop_range])
-            new_IP = structs[IP].get_other_end() + 2
+                    parse(expr[loop_range], env, glob_env, trans_structs( \
+                            structs[loop_range], - loop_range.start))
+                new_IP = structs[IP].get_other_end()
+            #print("LAST::", expr[new_IP:])
         IP = new_IP
 
 def parse_expr(expr, glob_env, structs=None, ret_tape=False):
     expr_tape = ExprTape()
     set_expr = True
-    print("parse_expr::expr::", expr)
+    #print("parse_expr::expr::", expr)
     flags = re.match("[|!]*", expr).group(0)
     if "!" in flags: set_expr = False
     if "|" in flags: ret_tape = True
@@ -409,10 +430,10 @@ def get_parsable_length(expr):
 
 def bi_parsable(expr, index):
     bi_expr = expr[index:index + 4]
-    if re.match("^\?(>=|==|<=|>>|<<|/=)[%s]$" % RETN, bi_expr): return 4
-    elif re.match("^\?(>=|==|<=|>>|<<|/=).", bi_expr): return 3
+    if re.match("\?(>=|==|<=|>>|<<|/=)[%s]" % RETN, bi_expr): return 4
+    elif re.match("\?(>=|==|<=|>>|<<|/=).", bi_expr): return 3
     bi_expr = expr[index:index + 2]
-    if re.match("^\?[!$]$", bi_expr): return 2
+    if re.match("\?[!$]", bi_expr): return 2
 
     # Bi-parsing type of oper that receive an param
             # no two successive opers can be parsed
@@ -440,6 +461,7 @@ def bi_eval(oper, param, env, glob_env):
             (param if has_param else 1))
     elif oper == "$": return env.get_val(index=param)
     elif oper == "@": return glob_env.get_val(index=param)
+    elif oper == "_": return 0
     elif oper == ".": putchar(param or env.get_val())
     elif oper == ",": env.set_val(ord(sys.stdin.read(1)))
     elif oper == "`": return glob_env.expr_tape.get_val()
@@ -455,7 +477,10 @@ def bi_eval(oper, param, env, glob_env):
     elif oper == "#":
         if has_param: env.set_RP(param)
         else: return env.get_RP()
-    elif oper == ":": return glob_env.call_by_expr( \
+    elif oper == ":":
+        #print("HAS PARAM::", has_param)
+        #print("IN bi_eval::", param if has_param else env.get_val())
+        return glob_env.call_by_expr( \
             param if has_param else env.get_val(), env)
     #elif oper == ";": return param or env.get_val()
     elif oper == "=": sys.exit(param or env.get_val())
@@ -476,8 +501,6 @@ def bi_eval(oper, param, env, glob_env):
     #            #print("    ^ " if index == ptr else "      ", \
     #                    end='')
     #        #print()
-
-    return 0
 
 def usage():
     print(
