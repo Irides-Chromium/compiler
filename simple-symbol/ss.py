@@ -33,8 +33,6 @@ class Env:
         self.FT = {}            # Function Reference
         #self.structs = []
 
-    def get_type(self): return self.__class__.__name__
-
     def get_val(self, cur=True, index=None):
         #print("INDEX REQ::", index)
         index = self.get_RP(cur) if index == None else index % self.TP_S
@@ -81,19 +79,10 @@ class Env:
     def add_cur_to_last(self, value):      # For !
         self.set_val(value + self.get_val(False), False)    #TODO
 
-    #def add_last_to_cur(self, value):      # For !
-    #    self.set_val(value + self.get_val())
-
-    #def call_by_ind(self, ref, env):
-    #    return parse(expr[self.FT[ref]], env, self, env.structs[self.FT[ref]])
-
-    #def defun_by_ind(self, ref, start_ind, end_ind):
-    #    self.FT[ref] = slice(start_ind, end_ind)
-
-    def defun_by_expr(self, ref, expr):     # For {}
+    def defunc(self, ref, expr):     # For {}
         self.FT[ref] = expr
 
-    def call_by_expr(self, ref, env):       # For :
+    def call(self, ref, env):       # For :
         #print("FUNC REF::", ref)
         parse(self.FT[ref], env, self)
 
@@ -102,8 +91,6 @@ class ExprTape:
     def __init__(self):
         self.tape = [0, 0, 0, 0, 0, 0, 0, 0]
         self.RP = 0
-        #self.structs = []
-        #self.expr_tape = ExprTape()
 
     def __repr__(self):
         return "tape(%s)" % str(tuple(self.tape))
@@ -130,12 +117,6 @@ class ExprTape:
 
     def get_tape(self):
         return self.tape
-
-    #def get_expr_tape(self):
-    #    return self.expr_tape
-
-    #def set_expr_tape(self, expr_tape):
-    #    self.expr_tape = expr_tape
 
     def move(self, diff):
         self.set_RP(self.RP + diff)
@@ -165,14 +146,11 @@ class brac_t:
                 yield pos
         return "<{:>2s}@{}>".format(self.byte, "|".join(gen_pos()))
 
-    def check_indexes(self):
-        return self.indexes[0] < self.indexes[1] < self.indexes[2]
-
     def has_mid(self):
-        return True if self.indexes[1] > -1 else False
+        return self.indexes[1] > -1
 
-    def get_self_index(self):
-        return self.indexes[self.pos]
+    #def get_self_index(self):
+    #    return self.indexes[self.pos]
 
     def get_index(self, pos):
         return self.indexes[self.pos_t[pos]]
@@ -197,9 +175,6 @@ class brac_t:
         if self.pos == 1: LOG(0, 1, "No such method for a `mid' type.")
         self.indexes[2 - self.pos] = index
 
-    def matched(self):
-        return True if self.get_other_end() else False
-
 def LOG(log_t, event_t, message):
     log = "FWDIV"
     # Fatal, Warning, Debug, Info, Verbose
@@ -213,11 +188,6 @@ def LOG(log_t, event_t, message):
         #sys.exit(retn)
         raise Exception
     return retn
-
-#def equi(byte1, byte2):
-#    is_brac = BRAC.index(byte1) + BRAC.index(byte2) == 5
-#    is_cond = byte1 in "?!$" and byte2 in "?!$"
-#    return is_brac or is_cond or byte1 == byte2
 
 def test(expr, env, glob_env):
     """
@@ -240,11 +210,10 @@ def test(expr, env, glob_env):
     elif comp == "/=": comp = "!="
 
     #print("EVAL EXPR::", "{:d}{}{:d}".format(cur_val, comp, val))
-    return eval("{:d}{}{:d}".format(cur_val, comp, val))
+    return eval("%d%s%d" % (cur_val, comp, val))
 
 def trans_structs(structs, diff):       #TODO Change to diff mode
     "Shift the indexes in a struct to fit deeper parse."
-    structs = structs.copy()
     for struct in structs:
         if struct: struct.set_indexes([i + diff if i > -1 else -1 \
                     for i in struct.get_indexes()])
@@ -326,7 +295,7 @@ def struct_scan(expr):
                         mid = structs[start].get_index("mid")
                         structs[mid].set_index("end", IP)
                         structs[IP].set_index("mid", mid)
-                else: LOG(0, 2, "Unrecognized symbol %c." % expr[IP + 1])
+                else: LOG(0, 2, "Unrecognized symbol: %c." % expr[IP + 1])
                 IP += 1
         IP += 1
     return structs
@@ -341,10 +310,10 @@ def parse(expr, env, glob_env, structs=None):
         parsable_expr = expr[IP:new_IP]
         if parsable_expr[0] != "?":
             param = None
-            last_ch = parsable_expr[1:][-2:-1]
-            if last_ch == "+" or last_ch == "-":
-                param = 44 - ord(last_ch)
-                parsable_expr = parsable_expr[:-1]
+            #last_ch = parsable_expr[1:][-2:-1]
+            #if last_ch == "+" or last_ch == "-":
+            #    param = 44 - ord(last_ch)
+            #    parsable_expr = parsable_expr[:-1]
             for c in parsable_expr[::-1]:
                 if c in BI_PAR: param = bi_eval(c, param, env, glob_env)
                 elif c in L_BRAC:
@@ -362,9 +331,9 @@ def parse(expr, env, glob_env, structs=None):
                             parse(expr[s], env, glob_env, \
                                     trans_structs(structs[s], - new_IP))
                     elif c == "{":
-                        glob_env.defun_by_expr(env.get_val(), expr[s])
+                        glob_env.defunc(env.get_val(), expr[s])
                     new_IP = other_end
-                elif c == ";": return param or env.get_val()
+                elif c == ";": return env.get_val() if param == None else param
         else:
             new_IP -= 1
             #print("SCAN EXPR::", expr[new_IP:])
@@ -372,8 +341,6 @@ def parse(expr, env, glob_env, structs=None):
                 new_IP = structs[new_IP].get_other_end() + 1
             else: new_IP = get_parsable_length(expr[new_IP:]) + new_IP
             #print("DEBUG::", expr[IP:new_IP])
-            # ?>>$$~
-            #print("COND SCAN2::", expr[IP:new_IP])
             struct = structs[IP]
             indexes = [i for i in struct.get_indexes() if i > -1]
             #print("STRUCTS::", structs)
@@ -402,9 +369,10 @@ def parse(expr, env, glob_env, structs=None):
             #print("LAST::", expr[new_IP:])
         IP = new_IP
 
-def parse_expr(expr, glob_env, structs=None, ret_tape=False):
+def parse_expr(expr, glob_env, structs=None):
     expr_tape = ExprTape()
     set_expr = True
+    ret_tape = False
     #print("parse_expr::expr::", expr)
     flags = re.match("[|!]*", expr).group(0)
     if "!" in flags: set_expr = False
@@ -480,8 +448,7 @@ def bi_eval(oper, param, env, glob_env):
     elif oper == ":":
         #print("HAS PARAM::", has_param)
         #print("IN bi_eval::", param if has_param else env.get_val())
-        return glob_env.call_by_expr( \
-            param if has_param else env.get_val(), env)
+        return glob_env.call(param if has_param else env.get_val(), env)
     #elif oper == ";": return param or env.get_val()
     elif oper == "=": sys.exit(param or env.get_val())
     #elif oper == "#":
@@ -525,23 +492,9 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--code", help="Run the code.")
     args = parser.parse_args()
     env = Env()
-    #i = 0
-    #argv = sys.argv[1:]
-    #while i < len(argv):
-    #    arg = argv[i]
-    #    elif arg == "-s" or arg == "--source":
-    #        i += 1
-    #        sources.append(argv[i])
-    #    elif arg == "-f" or arg == "--file":
-    #        i += 1
-    #        code = open(argv[i]).read()
-    #    elif arg == "-c" or arg == "--code":
-    #        i += 1
-    #        code = argv[i]
-    #    elif arg == "-h" or arg == "--help": usage()
-    #    i += 1
     if args.source:
-        for file in sources: parse(open(source).read(), env, env)
+        for file in args.source: parse(open(file).read(), env, env)
+    if args.code: parse(args.code, env, env)
     if args.intera:
         print("Simple Symbol 1.0.0 by Steven Zhu")
         while True:
@@ -549,9 +502,5 @@ if __name__ == "__main__":
             except EOFError: sys.exit(print("\nBye!"))
             except KeyboardInterrupt: print()
     else:
-        code = args.code
-        if not code:
-            try: code = sys.stdin.read()
-            except KeyboardInterrupt: sys.exit(print())
-        try: parse(code, env, env)
+        try: parse(sys.stdin.read(), env, env)
         except KeyboardInterrupt: sys.exit(print())
