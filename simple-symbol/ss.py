@@ -2,15 +2,13 @@
 
 import sys, re, random
 from putchar import putchar
-ALL = "-+*/^%<>~`!@#$={[()]},.;:?"
+ALL = "-+*/^%<>~`!@#$={[()]},.;:?\""
 BI_PAR = "~#@$%^!*+-<>:,.=/&`_"  # Bi-parsable
 OPER = "-+*/^%<>"   # "Operators"
 MATH_OP = "-+*/^%"  # Math operators
-RETN = "~@#$:,(`_&" # opers that return a value (an expr as well)
-#A_RETN = "$:,(`"    # Always return a value
-EITHER = "-+~#"     # opers that either return a value or receive a value
+RETN = "~@#$:(`_&"  # opers that return a value (an expr as well)
+EITHER = "~#"       # opers that either return a value or receive a value
 RECI = "~#$@!:;.="  # opers that receive a value
-#A_RECI = "$@!:;.="  # Always tries to receive a value
 BRAC = "{[()]}"     # The brackets
 L_BRAC = "{[("
 R_BRAC = ")]}"
@@ -93,7 +91,7 @@ class ExprTape:
         self.RP = 0
 
     def __repr__(self):
-        return "tape(%s)" % str(tuple(self.tape))
+        return "tape%s" % str(tuple(self.tape))
 
     def get_type(self): return self.__class__.__name__
 
@@ -123,7 +121,7 @@ class ExprTape:
 
 class brac_t:
     """
-    Use for matchable structures: ()[]{}`` and ?...?!?$
+    Use for matchable structures: ()[]{}\"\" and ?...?!?$
     """
     pos_t = {"start": 0, "mid": 1, "end": 2}
     def __init__(self, byte, pos, val):
@@ -259,7 +257,7 @@ def struct_scan(expr):
             if expr[IP + 1] not in "!$":
                 struct_t = "?"
                 new_IP = get_parsable_length(expr[IP:]) + IP
-                #print("AFTER GET::", expr[IP:IP + 3])
+                #print("AFTER GET::", expr[IP:new_IP])
                 if expr[new_IP - 1] == "(":
                     count = 1
                     while True:
@@ -271,7 +269,7 @@ def struct_scan(expr):
                     structs[IP + 3:new_IP] = trans_structs( \
                             struct_scan(expr[IP + 3:new_IP]), IP + 3)
                 elif expr[new_IP - 1] in RETN:
-                    new_IP = get_parsable_length(expr[new_IP:]) + new_IP
+                    new_IP += get_parsable_length(expr[new_IP + 1:])
                 #print("struct_scan::expr[IP+3:new_IP]::", expr[IP + 3:new_IP])
                 #print("IDENTIFIER::", expr[new_IP])
                 if expr[new_IP] == "[": struct_t = "?["
@@ -297,6 +295,21 @@ def struct_scan(expr):
                         structs[IP].set_index("mid", mid)
                 else: LOG(0, 2, "Unrecognized symbol: %c." % expr[IP + 1])
                 IP += 1
+        elif byte == "\"":
+            end = 0
+            quote = expr.find("\"", IP + 1)
+            newline = expr.find("\n", IP + 1)
+            if quote == -1:
+                if newline == -1: raise Exception("Comment not ended.")
+                else: end = newline
+            elif quote < newline: end = quote
+            else: end = newline
+            #print("REST::", IP, end, expr[IP:])
+            structs[IP] = brac_t("\"", "start", IP)
+            structs[end] = brac_t("\"", "end", end)
+            structs[IP].set_other_end(end)
+            structs[end].set_other_end(IP)
+            IP = end
         IP += 1
     return structs
 
@@ -316,7 +329,7 @@ def parse(expr, env, glob_env, structs=None):
             #    parsable_expr = parsable_expr[:-1]
             for c in parsable_expr[::-1]:
                 if c in BI_PAR: param = bi_eval(c, param, env, glob_env)
-                elif c in L_BRAC:
+                elif c in L_BRAC + "\"":
                     other_end = structs[new_IP - 1].get_other_end()
                     s = slice(new_IP, other_end)
                     if c == "(":
@@ -330,8 +343,8 @@ def parse(expr, env, glob_env, structs=None):
                             #print("VALUE::", env.get_val())
                             parse(expr[s], env, glob_env, \
                                     trans_structs(structs[s], - new_IP))
-                    elif c == "{":
-                        glob_env.defunc(env.get_val(), expr[s])
+                    elif c == "{": glob_env.defunc(env.get_val(), expr[s])
+                    elif c == "\"": other_end += 1
                     new_IP = other_end
                 elif c == ";": return env.get_val() if param == None else param
         else:
@@ -379,10 +392,10 @@ def parse_expr(expr, glob_env, structs=None):
     if "|" in flags: ret_tape = True
     expr = expr[len(flags):]
     #print("AFTER FLAGS::", expr)
-    parse(expr, expr_tape, glob_env, structs)
+    retn = parse(expr, expr_tape, glob_env, structs)
     if set_expr: glob_env.set_expr_tape(expr_tape)
     if ret_tape: return expr_tape.get_tape()
-    return expr_tape.get_val()
+    return expr_tape.get_val()# if retn == None else retn
 
 def get_parsable_length(expr):
     index = 0
@@ -494,13 +507,13 @@ if __name__ == "__main__":
     env = Env()
     if args.source:
         for file in args.source: parse(open(file).read(), env, env)
-    if args.code: parse(args.code, env, env)
     if args.intera:
         print("Simple Symbol 1.0.0 by Steven Zhu")
         while True:
-            try: parse(input(">>> "), env, env)
+            try: parse(input(">>> ") + "\n", env, env)
             except EOFError: sys.exit(print("\nBye!"))
             except KeyboardInterrupt: print()
+    if args.code: parse(args.code, env, env)
     else:
         try: parse(sys.stdin.read(), env, env)
         except KeyboardInterrupt: sys.exit(print())
