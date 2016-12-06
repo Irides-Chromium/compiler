@@ -2,11 +2,11 @@
 
 import sys, re, random
 from putchar import putchar
-ALL = "-+*/^%<>~`!@#$={[()]},.;:?\""
+ALL = "-+*/^%<>~`!@#$={[()]},.;:?_\""
 BI_PAR = "~#@$%^!*+-<>:,.=/&`_"  # Bi-parsable
 OPER = "-+*/^%<>"   # "Operators"
 MATH_OP = "-+*/^%"  # Math operators
-RETN = "~@#$:(`_&"  # opers that return a value (an expr as well)
+RETN = "~@#$:(`&"  # opers that return a value (an expr as well)
 EITHER = "~#"       # opers that either return a value or receive a value
 RECI = "~#$@!:;.="  # opers that receive a value
 BRAC = "{[()]}"     # The brackets
@@ -33,13 +33,17 @@ class Env:
 
     def get_val(self, cur=True, index=None):
         #print("INDEX REQ::", index)
-        index = self.get_RP(cur) if index == None else index % self.TP_S
+        index = choice(self.get_RP(cur), index) % self.TP_S
         #print("ACTUAL INDEX::", index)
         return self.MX[self.get_TP(cur)][index]
 
     def set_val(self, value, cur=True, index=None):
-        index = self.get_RP(cur) if index == None else index % self.TP_S
+        index = choice(self.get_RP(cur), index) % self.TP_S
         self.MX[self.get_TP(cur)][index] = value
+
+    def get_mem(self, index=None):
+        index = choice(self.get_RP() + self.get_TP() * self.TP_S, index)
+        return self.MX[index // self.TP_S][index % self.TP_S]
 
     def get_TP(self, cur=True):             # For ~
         return self.TPS[cur]
@@ -64,11 +68,11 @@ class Env:
         self.expr_tape = expr_tape
 
     def get_tape_right(self, index=None):
-        start = self.get_RP() if index == None else index
+        start = choice(self.get_RP(), index)
         return [self.get_val(index=i) for i in range(start, start + 8)]
 
     def set_tape_right(self, tape, index=None):
-        start = self.get_RP() if index == None else index
+        start = choice(self.get_RP(), index)
         for i in range(start, start + 8): self.set_val(tape[i], index=i) 
 
     def move(self, diff):                   # For <>
@@ -85,6 +89,7 @@ class Env:
         parse(self.FT[ref], env, self)
 
 class ExprTape:
+    TP_S = 8
 
     def __init__(self):
         self.tape = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -111,6 +116,10 @@ class ExprTape:
         return self.RP
 
     #def set_tape(self, tape):
+    def get_RP(self):
+        return self.RP
+
+    #def set_tape(self, tape):
     #    self.tape = tape
 
     def get_tape(self):
@@ -121,7 +130,7 @@ class ExprTape:
 
 class brac_t:
     """
-    Use for matchable structures: ()[]{}\"\" and ?...?!?$
+    Use for matchable structures: ()[]{}\" and ?...?!?$
     """
     pos_t = {"start": 0, "mid": 1, "end": 2}
     def __init__(self, byte, pos, val):
@@ -147,9 +156,6 @@ class brac_t:
     def has_mid(self):
         return self.indexes[1] > -1
 
-    #def get_self_index(self):
-    #    return self.indexes[self.pos]
-
     def get_index(self, pos):
         return self.indexes[self.pos_t[pos]]
 
@@ -164,21 +170,12 @@ class brac_t:
         if len(indexes) != 3: LOG(0, 2, "Indexes number not match.")
         self.indexes = indexes
 
-    def get_other_end(self):
-        if self.pos == 1: LOG(0, 1, "No such method for a `mid' type.")
-        return self.indexes[2 - self.pos]
-
-    def set_other_end(self, index):
-        if index < 0: LOG(0, 1, "Index too low")
-        if self.pos == 1: LOG(0, 1, "No such method for a `mid' type.")
-        self.indexes[2 - self.pos] = index
-
 def LOG(log_t, event_t, message):
     log = "FWDIV"
     # Fatal, Warning, Debug, Info, Verbose
     return_val = "32000"
     event = ["MEM Management", "Brackets", "Expression"]
-    print("".join((log[log_t], "/[", event[event_t], "]: ", message)), \
+    print(log[log_t], "/[", event[event_t], "]: ", message, sep="", \
             file=stderr)
     retn = int(return_val[log_t])
     if retn > 0:
@@ -186,6 +183,9 @@ def LOG(log_t, event_t, message):
         #sys.exit(retn)
         raise Exception
     return retn
+
+def choice(val1, val2, cond=None):
+    return val1 if val2 == cond else val2
 
 def test(expr, env, glob_env):
     """
@@ -200,7 +200,8 @@ def test(expr, env, glob_env):
     #print("cur_val::", cur_val)
     #print("VALUE EXPR::", expr[1:-1])
     #print("OUT OF parse_expr::", expr)
-    val = parse_expr(expr[1:-1], env, glob_env)
+    val = parse_expr("!" + (expr[1:-1] if expr[0:1] == "(" \
+            else expr), env, glob_env)
     #print("test::val::", val)
 
     if comp == "<<": comp = "<"
@@ -323,10 +324,6 @@ def parse(expr, env, glob_env, structs=None):
         parsable_expr = expr[IP:new_IP]
         if parsable_expr[0] != "?":
             param = None
-            #last_ch = parsable_expr[1:][-2:-1]
-            #if last_ch == "+" or last_ch == "-":
-            #    param = 44 - ord(last_ch)
-            #    parsable_expr = parsable_expr[:-1]
             for c in parsable_expr[::-1]:
                 if c in BI_PAR: param = bi_eval(c, param, env, glob_env)
                 elif c in L_BRAC + "\"":
@@ -334,19 +331,17 @@ def parse(expr, env, glob_env, structs=None):
                     s = slice(new_IP, other_end)
                     if c == "(":
                         #print("OTHER_END::", other_end)
-                        param = parse_expr(expr[s], glob_env, \
-                                trans_structs(structs[s], - new_IP))
+                        param = parse_expr(expr[s], glob_env)
                         #print("param::", param)
                         #print("OTHER_END::", expr[IP])
                     elif c == "[":
                         while env.get_val() != 0:
                             #print("VALUE::", env.get_val())
-                            parse(expr[s], env, glob_env, \
-                                    trans_structs(structs[s], - new_IP))
+                            parse(expr[s], env, glob_env)
                     elif c == "{": glob_env.defunc(env.get_val(), expr[s])
                     elif c == "\"": other_end += 1
                     new_IP = other_end
-                elif c == ";": return env.get_val() if param == None else param
+                elif c == ";": return choice(env.get_val(), param)
         else:
             new_IP -= 1
             #print("SCAN EXPR::", expr[new_IP:])
@@ -370,14 +365,12 @@ def parse(expr, env, glob_env, structs=None):
                         else alt
                 #print("CONSEQ::", expr[conseq], "ALT::", expr[alt], "(%s)" % expr)
                 #print("SLICE::", expr[expr_slice])
-                parse(expr[expr_slice], env, glob_env, trans_structs( \
-                        structs[expr_slice], - expr_slice.start))
+                parse(expr[expr_slice], env, glob_env)
                 new_IP = structs[IP].get_other_end() + 1
             elif struct.byte == "?[":
                 loop_range = slice(indexes[1] + 1, indexes[2])
                 while test(expr[IP + 1:new_IP], env, glob_env):
-                    parse(expr[loop_range], env, glob_env, trans_structs( \
-                            structs[loop_range], - loop_range.start))
+                    parse(expr[loop_range], env, glob_env)
                 new_IP = structs[IP].get_other_end()
             #print("LAST::", expr[new_IP:])
         IP = new_IP
@@ -458,12 +451,13 @@ def bi_eval(oper, param, env, glob_env):
     elif oper == "#":
         if has_param: env.set_RP(param)
         else: return env.get_RP()
+    elif oper == "\\": env.set_val(int(env.get_val()))
     elif oper == ":":
         #print("HAS PARAM::", has_param)
         #print("IN bi_eval::", param if has_param else env.get_val())
         return glob_env.call(param if has_param else env.get_val(), env)
     #elif oper == ";": return param or env.get_val()
-    elif oper == "=": sys.exit(param or env.get_val())
+    elif oper == "=": sys.exit(param if has_param else env.get_val())
     #elif oper == "#":
     #    #print("Current tape: %d" % (env.CT + 1))
     #    for tape_num in [0, 1]:
@@ -480,19 +474,15 @@ def bi_eval(oper, param, env, glob_env):
     #        for index in range(lo, hi):
     #            #print("    ^ " if index == ptr else "      ", \
     #                    end='')
-    #        #print()
-
-def usage():
-    print(
-"""Simple Symbol - a brainfuck like programming language by Steven Zhu.
-Usage: %s [-i | --intera] [-h | --help] [-f | --file file] [-s | --source source]
-Options:
-    -i, --intera    Enter interactive mode.
-    -h, --help      Show this help message and exit.
-    -f, --file      Run a specified file.
-    -s, --source    Source the file before running.
-When no option is supplied, the program will read code from stdin.""")
-    sys.exit()
+#"""Simple Symbol - a brainfuck like programming language by Steven Zhu.
+#Usage: %s [-i | --intera] [-h | --help] [-f | --file file] [-s | --source source]
+#Options:
+#    -i, --intera    Enter interactive mode.
+#    -h, --help      Show this help message and exit.
+#    -f, --file      Run a specified file.
+#    -s, --source    Source the file before running.
+#When no option is supplied, the program will read code from stdin.""")
+#    sys.exit()
 
 if __name__ == "__main__":
     import argparse

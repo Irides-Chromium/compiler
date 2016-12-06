@@ -1,16 +1,29 @@
 " num2str()
-" in Tape 1: num  index  positive?  *data
-[-]++++{                    " Initialize reference
-    < (+@)~(!+)+`           " Copy value to tape 1 index 0
-    ?<<_-(!+@*)?!>>+<<?$    " If negative call abs(), else set positive flag
-    >+++<                   " Set up jump index
+" Memory: num  index  positive?  *data
+[-]++++{                " Initialize reference
+    < (+@)~(!+)#+`      " Copy value to tape 1 index 0
+    ?<<-(!+@*)?!>>+<<?$ " If negative call abs(), else set positive flag
+    >+++<               " Set up jump index
     ?>>[
-        #@(!+)              " Jump to data buffer
-        +@_%(!++**++)       " Add the num and modulo by 10
-        +(!+++****)         " Add 48
-        #_/(!++**++)        " Return to 0 index and divide num by 10
-        >+<                 " Increment index
+        #@(!+)          " Jump to data buffer
+        +@_%(!++**++)   " Add the num and modulo by 10
+        +(!+++****)     " Add 48
+        #_/(!++**++)    " Return to 0 index and divide num by 10
+        >+<             " Increment index
     ]
-    #(!+)                   " Go to buffer
-    [.<]                    " Output
-}
+    -                   " Decrement index
+    #(!++)              " Jump to positive flag
+    ?<<.(!+++^*(!+++++))?$" If negative, output "-"
+    #(!+)               " Go to index
+    ?>=(!+++)[          " while index >= 3:
+        .(!+@@)         " Output where the index points
+        -               " Decrement index
+    ]
+}[-]
+
+" str2num()
+" Memory: index  sign/positive flag  *data
+"[-]+++++{
+"    (+~**+#)~(!+)#+`    " Copy reference
+"    >+@@                " Read the first char
+"    ?++(!+++^*(!+++++))
