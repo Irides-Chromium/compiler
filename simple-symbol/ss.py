@@ -201,7 +201,7 @@ def test(expr, env, glob_env):
     #print("VALUE EXPR::", expr[1:-1])
     #print("OUT OF parse_expr::", expr)
     val = parse_expr("!" + (expr[1:-1] if expr[0:1] == "(" \
-            else expr), env, glob_env)
+            else "+" + expr), env, glob_env)
     #print("test::val::", val)
 
     if comp == "<<": comp = "<"
@@ -248,8 +248,8 @@ def struct_scan(expr):
         elif byte in R_BRAC:
             start, struct_t = unmatched.pop()
             structs[IP] = brac_t(struct_t, "end", IP)
-            structs[start].set_other_end(IP)
-            structs[IP].set_other_end(start)
+            structs[start].set_index("end", IP)
+            structs[IP].set_index("start", start)
             if structs[start].has_mid():
                 mid = structs[start].get_index("mid")
                 structs[mid].set_index("end", IP)
@@ -271,7 +271,7 @@ def struct_scan(expr):
                             struct_scan(expr[IP + 3:new_IP]), IP + 3)
                 elif expr[new_IP - 1] in RETN:
                     new_IP += get_parsable_length(expr[new_IP + 1:])
-                #print("struct_scan::expr[IP+3:new_IP]::", expr[IP + 3:new_IP])
+                #print("struct_scan::expr[IP:new_IP]::", expr[IP:new_IP])
                 #print("IDENTIFIER::", expr[new_IP])
                 if expr[new_IP] == "[": struct_t = "?["
                 structs[IP] = brac_t(struct_t, "start", IP)
@@ -308,8 +308,8 @@ def struct_scan(expr):
             #print("REST::", IP, end, expr[IP:])
             structs[IP] = brac_t("\"", "start", IP)
             structs[end] = brac_t("\"", "end", end)
-            structs[IP].set_other_end(end)
-            structs[end].set_other_end(IP)
+            structs[IP].set_index("end", end)
+            structs[end].set_index("start", IP)
             IP = end
         IP += 1
     return structs
@@ -327,7 +327,7 @@ def parse(expr, env, glob_env, structs=None):
             for c in parsable_expr[::-1]:
                 if c in BI_PAR: param = bi_eval(c, param, env, glob_env)
                 elif c in L_BRAC + "\"":
-                    other_end = structs[new_IP - 1].get_other_end()
+                    other_end = structs[new_IP - 1].get_index("end")
                     s = slice(new_IP, other_end)
                     if c == "(":
                         #print("OTHER_END::", other_end)
@@ -346,7 +346,7 @@ def parse(expr, env, glob_env, structs=None):
             new_IP -= 1
             #print("SCAN EXPR::", expr[new_IP:])
             if expr[new_IP] == "(":
-                new_IP = structs[new_IP].get_other_end() + 1
+                new_IP = structs[new_IP].get_index("end") + 1
             else: new_IP = get_parsable_length(expr[new_IP:]) + new_IP
             #print("DEBUG::", expr[IP:new_IP])
             struct = structs[IP]
@@ -366,12 +366,12 @@ def parse(expr, env, glob_env, structs=None):
                 #print("CONSEQ::", expr[conseq], "ALT::", expr[alt], "(%s)" % expr)
                 #print("SLICE::", expr[expr_slice])
                 parse(expr[expr_slice], env, glob_env)
-                new_IP = structs[IP].get_other_end() + 1
+                new_IP = structs[IP].get_index("end") + 1
             elif struct.byte == "?[":
                 loop_range = slice(indexes[1] + 1, indexes[2])
                 while test(expr[IP + 1:new_IP], env, glob_env):
                     parse(expr[loop_range], env, glob_env)
-                new_IP = structs[IP].get_other_end()
+                new_IP = structs[IP].get_index("end")
             #print("LAST::", expr[new_IP:])
         IP = new_IP
 
