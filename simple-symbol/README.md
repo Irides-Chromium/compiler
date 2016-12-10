@@ -41,7 +41,8 @@ For those who has already played with [brainfuck](https://en.wikipedia.org/wiki/
 23. `=` exit the program (value specified or current cell).
 24. `?` if, current cell examined.
 25. `/` set the current cell with a division (divisor specified or 2).
-26. `\` return the last expression value.
+26. ``` return the last expression value.
+27. `\` cast the current cell to int, and set the current cell.
 27. `|` return the last expression.
 28. `&` return a random integer between 0 and 65536.
 
@@ -105,6 +106,8 @@ And there are some special expressions, which will be explained later.
     +------+-----------+----------+----------+---------+
     | ```  |     0     |    0     |    0     |no effect|
     +------+-----------+----------+----------+---------+
+    | `\`  |     0     |    0     |    0     |no effect|
+    +------+-----------+----------+----------+---------+
     | `|`  |     0     |    0     |    0     |no effect|
     +------+-----------+----------+----------+---------+
     | `&`  |     0     |    0     |    0     |no effect|
@@ -128,7 +131,7 @@ The expression cell is used when an expression enclosed in `()` is used. It is a
 A ()-expression typically returns a **value**. The same as normal tapes, the value returned is the value where the pointer is at. But it can also return a tape of itself. At the beginning of a ()-expression, a `|`, which is a flag, can set the returned to the tape.
 
 #### Retaining the Expression Value
-And, the expression cell would keep its value until the next expression. In the next ()-expression (i.e. expression enclosed by `(` and `)`), an expression of `|` will hold the old expression value, and ``` will hold the old expression value.
+And, the expression cell would keep its value until the next expression. In the next ()-expression (i.e. expression enclosed by `(` and `)`), an expression of `|` will hold the old expression value, and ``` will hold the old expression value (the value pointed by the pointer in the expression tape).
 
 Actually, always setting the expression is annoying. You can use the `!` flag to force the interpreter *not* set the expression.
 
@@ -187,7 +190,7 @@ These are just the default behaviours, you may also use a ()-expression to speci
 
 ## Loops
 
-The loops uses a similar sematic structure as the conditionals. While the brainfuck only have `[]` for loops, you may add a conditional with no `endif` (`?\`) right before the `[` to have the interpreter check the conditional specified before every loop. For example, a loop would be like this:
+The loops uses a similar sematic structure as the conditionals. While the brainfuck only have `[]` for loops, you may add a conditional with no `endif` (`?$`) right before the `[` to have the interpreter check the conditional specified before every loop. For example, a loop would be like this:
 
     ??<(++++)[>+.<]
 
