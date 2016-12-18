@@ -2,11 +2,11 @@
 
 import sys, re, random
 from putchar import putchar
-ALL = "-+*/^%<>~`!@#$={[()]},.;:?_\""
-BI_PAR = "~#@$%^!*+-<>:,.=/&`_"  # Bi-parsable
+ALL = "-+*/^%<>~`|!@#$={[()]},.;:?_\""
+BI_PAR = "~#@$%^!*+-<>:,.=/&`|_"  # Bi-parsable
 OPER = "-+*/^%<>"   # "Operators"
 MATH_OP = "-+*/^%"  # Math operators
-RETN = "~@#$:(`&"  # opers that return a value (an expr as well)
+RETN = "~@#$:(`|&"  # opers that return a value (an expr as well)
 EITHER = "~#"       # opers that either return a value or receive a value
 RECI = "~#$@!:;.="  # opers that receive a value
 BRAC = "{[()]}"     # The brackets
