@@ -22,6 +22,4 @@ param_t bi_eval(char oper, param_t param, void *env, Env *glob_env);
 
 void print_first(void *self, Env *glob);
 
-void LOG(err_level lvl, char *fmt, ...);
-
 //#endif /* SS_H */

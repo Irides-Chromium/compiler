@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import sys, re, random
-from putchar import putchar
 ALL = "-+*/^%<>~`|!@#$={[()]},.;:?_\""
 BI_PAR = "~#@$%^!*+-<>:,.=/&`|_"  # Bi-parsable
 OPER = "-+*/^%<>"   # "Operators"
@@ -261,12 +260,11 @@ def struct_scan(expr):
                 #print("AFTER GET::", expr[IP:new_IP])
                 if expr[new_IP - 1] == "(":
                     count = 1
-                    while True:
+                    while count:
                         _byte = expr[new_IP]
                         if _byte in L_BRAC: count += 1
                         elif _byte in R_BRAC: count -= 1
                         new_IP += 1
-                        if not count: break
                     structs[IP + 3:new_IP] = trans_structs( \
                             struct_scan(expr[IP + 3:new_IP]), IP + 3)
                 elif expr[new_IP - 1] in RETN:
@@ -436,7 +434,7 @@ def bi_eval(oper, param, env, glob_env):
     elif oper == "$": return env.get_val(index=param)
     elif oper == "@": return glob_env.get_val(index=param)
     elif oper == "_": return 0
-    elif oper == ".": putchar(param or env.get_val())
+    elif oper == ".": print(chr(param or env.get_val()), end='')
     elif oper == ",": env.set_val(ord(sys.stdin.read(1)))
     elif oper == "`": return glob_env.expr_tape.get_val()
     elif oper == "|": return glob_env.expr_tape.get_tape()
@@ -493,17 +491,19 @@ if __name__ == "__main__":
             action="append")
     parser.add_argument("-f", "--file", help="Run the file.")
     parser.add_argument("-c", "--code", help="Run the code.")
+    parser.add_argument("-p", "--prompt", help="The prompt used in interactive mode.\n"
+            "Default is '>>> '. Used in macro language interp.")
     args = parser.parse_args()
     env = Env()
     if args.source:
         for file in args.source: parse(open(file).read(), env, env)
+    if args.code: parse(args.code, env, env)
     if args.intera:
         print("Simple Symbol 1.0.0 by Steven Zhu")
         while True:
             try: parse(input(">>> ") + "\n", env, env)
             except EOFError: sys.exit(print("\nBye!"))
             except KeyboardInterrupt: print()
-    if args.code: parse(args.code, env, env)
     else:
         try: parse(sys.stdin.read(), env, env)
         except KeyboardInterrupt: sys.exit(print())

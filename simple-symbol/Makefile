@@ -2,10 +2,10 @@ CC = gcc
 #CFLAGS = -Wall
 LIBS = -lm
 
-all: io environ parse ss
+all: list io environ parse ss
 	$(CC) $(CFLAGS) *.o -o ss $(LIBS)
 
-test: io environ parse ss-without-main _test
+test: list io environ parse ss-without-main _test
 	$(CC) $(CFLAGS) *.o -o test $(LIBS)
 
 environ: environ.c
@@ -14,8 +14,11 @@ environ: environ.c
 parse: parse.c
 	$(CC) $(CFLAGS) -c $< $(LIBS)
 
-io: io.c
+list: list.c
 	$(CC) $(CFLAGS) -c $< $(LIBS)
+
+io: io.c
+	$(CC) $(CFLAGS) -c $< $(LIBS) -DLOG_LEVEL=0
 
 ss: environ parse io
 	$(CC) $(CFLAGS) -c $< $(LIBS)

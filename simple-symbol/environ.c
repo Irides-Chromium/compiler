@@ -14,50 +14,6 @@ short ENV_TP_S = 1024;
 short ENV_MX_S = 4;
 short EXPR_TP_S = 8;
 
-void LOG(err_level lvl, char *fmt, ...) {
-    switch (lvl) {
-        case VERBOSE:
-            if (lvl < LOG_LEVEL) goto to_exit;
-            printf("%s", "Verbose: ");
-            break;
-        case INFO:
-            if (lvl < LOG_LEVEL) goto to_exit;
-            printf("\x1b[32mInfo: \x1b[0m");
-            break;
-        case DEBUG:
-            if (lvl < LOG_LEVEL) goto to_exit;
-            printf("\x1b[33mDebug: \x1b[0m");
-            break;
-        case WARNING:
-            if (lvl < LOG_LEVEL) goto to_exit;
-            printf("\x1b[1;35mWarning: \x1b[0m");
-            break;
-        case ERROR:
-            if (lvl < LOG_LEVEL) goto to_exit;
-            printf("\x1b[1;31mVerbose: \x1b[0m");
-            break;
-    }
-
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-
-to_exit:;
-    int stat = lvl - ERR_THRESHOLD + 1;
-    if (stat)
-        exit(stat);
-}
-
-void free_list(l_list *head) {
-    l_list *old, *ptr = malloc(sizeof(l_list));
-    while (ptr != NULL) {
-        old = ptr;
-        ptr = ptr->next;
-        free(old);
-    }
-}
-
 void append_func(l_list *tail, value_t ref, ss_inst *ind) {
     tail->next = malloc(sizeof(l_list));
     tail = tail->next;
@@ -103,8 +59,7 @@ Env *init_env() {
     memset(self->TPS, 0, sizeof(int) * 2);
     memset(self->RPS, 0, sizeof(int) * 4);
     self->type = 'g';
-    self->FT = malloc(sizeof(l_list));
-    self->func_ptr = self->FT;
+    self->func_ptr = self->FT = malloc(sizeof(l_list));
     self->expr_tape = init_expr();
     return self;
 }
@@ -237,11 +192,11 @@ void env_set_expr_tape(Env *self, ExprTape *expr_tape) {
 
 // TODO env_defunc && env_call
 
-void env_defunc(Env *self, value_t ref, index_t ind) {
+void env_defunc(Env *self, value_t ref, ss_inst *ind) {
     l_list *func_ptr = self->func_ptr;
     func_ptr->next = malloc(sizeof(l_list));
     func_ptr = func_ptr->next;
-    func_ptr->name = ref;
+    func_ptr->name = (int) ref;
     func_ptr->index = ind;
     func_ptr->next = NULL;
     self->func_ptr = func_ptr;
