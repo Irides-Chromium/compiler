@@ -205,4 +205,3 @@ void env_defunc(Env *self, value_t ref, ss_inst *ind) {
 value_t env_call(Env *glob_env, value_t ref) {
     return 0;
 }
-

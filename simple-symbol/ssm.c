@@ -1,116 +1,6 @@
-#include <stdio.h>
-#include <malloc.h>
-#include <math.h>
-#include <stdbool.h>
-#include <ctype.h>
+#include "ssm.h"
 
-#include "io.h"
-
-#define PRINTINT(var) printf("\e[32mINT\e[0m %s::%d\n", #var, var);
-#define PRINTCHAR(var) printf("\e[33mCHAR\e[0m %s::%d <%c>\n", #var, var, var);
-#define PRINTLONG(var) printf("\e[34mLONG\e[0m %s::%ld\n", #var, var);
-#define PRINTPTR(var) printf("\e[35mPTR\e[0m %s::%p\n", #var, var);
-#define PRINTSTR(var) printf("\e[36mSTR\e[0m %s::%s\n", #var, var);
-
-static int print_recur_count = 0;
-static int read_recur_count = 0;
-
-typedef enum {
-    NIL_T, 
-    TRUE_T, 
-    NUM_T,
-    SYMBOL_T,
-    FUNC_T,
-    MACRO_T,
-    LIST_T,
-
-    DOT_T,
-    CPAREN_T,
-    PRIMITIVE_T,
-    ENV_T
-} ssm_type;
-
-typedef struct _ssm_obj {
-    ssm_type type;
-    union {
-        double val;
-        char *name;
-        struct _ssm_obj *list;
-        struct {
-            struct _ssm_obj *param;
-            struct _ssm_obj *body;
-            struct _ssm_obj *env;
-        };
-    };
-    struct _ssm_obj *next;
-} ssm_obj;
-
-static ssm_obj *T = &(ssm_obj) {TRUE_T};
-static ssm_obj *NIL = &(ssm_obj) {NIL_T};
-static ssm_obj *DOT = &(ssm_obj) {DOT_T};
-static ssm_obj *CPAREN = &(ssm_obj) {CPAREN_T};
-
-static ssm_obj *read_symbol(stream_t *stream);
-static ssm_obj *read_number(stream_t *stream);
-static ssm_obj *read_quote(stream_t *stream);
-static ssm_obj *read_expr(stream_t *stream);
-static ssm_obj *read_list(stream_t *stream);
-void print_slist(ssm_obj *);
-void print_sslist(ssm_obj *);
-
-ssm_obj *s_split(stream_t *stream) {
-    long space_pos;
-    int word_len;
-    bool last = false;
-    ssm_obj *list = malloc(sizeof(ssm_obj));
-    list->type = LIST_T;
-    ssm_obj *head = malloc(sizeof(ssm_obj));
-    ssm_obj *ptr = head;
-    list->list = head;
-    while (listench(stream)) {
-        space_pos = findch(stream, ' ');
-        if (space_pos == -1) {
-            last = true;
-            space_pos = (long) stream->end;
-        }
-        word_len = space_pos - getpos(stream);
-        if (word_len == 0) {
-            move_stream(stream, 1);
-            continue;
-        } else {
-            ptr->name = calloc(word_len + 1, sizeof(char));
-            getstr(stream, word_len, ptr->name);
-            setpos(stream, space_pos + 1);
-        }
-        move_stream(stream, 1);
-        if (listench(stream) != ' ' && !last) {
-            ptr->next = malloc(sizeof(ssm_obj));
-            ptr = ptr->next;
-            ptr->next = NULL;
-        }
-        move_stream(stream, -1);
-    }
-    return list;
-}
-
-void free_objs(ssm_obj *head) {
-    if (head->type == LIST_T)
-        free_objs(head->list);
-    if (head->next)
-        free_objs(head->next);
-    if (head->type == SYMBOL_T)
-        free(head->name);
-    if (head != T && head != NIL && head != DOT && head != CPAREN)
-        free(head);
-}
-
-static ssm_obj *intern(char *name) {
-    //TODO Find name in env
-    ssm_obj *obj = malloc(sizeof(ssm_obj));
-    obj->type = SYMBOL_T;
-    obj->name = name;
-    return obj;
-}
+static short max_arrptr[4] = {0, 0, 0, 0};
 
 static ssm_obj *read_symbol(stream_t *stream) {
     long pos = getpos(stream);
@@ -162,7 +52,7 @@ static ssm_obj *read_number(stream_t *stream) {
 }
 
 static ssm_obj *read_quote(stream_t *stream) {
-    ssm_obj *quote = intern("quote");
+    ssm_obj *quote;// = sfind_var(env, "quote");
     ssm_obj *expr = read_expr(stream);
     quote->next = expr;
     return quote;
@@ -178,7 +68,7 @@ static ssm_obj *read_expr(stream_t *stream) {
             getch(stream);
             continue;
         }
-        if (c == EOF)
+        if (c == EOF || c == 0)
             return NULL;
         if (c == ';') {
             while (true) {
@@ -250,6 +140,248 @@ static ssm_obj *read_list(stream_t *stream) {
         }
     }
 }
+
+void free_obj(ssm_obj *head) {
+    switch (head->type) {
+        case TRUE_T: case NIL_T: case DOT_T: case CPAREN_T:
+            return;
+        case BUILTIN_T:
+            return;
+        case SYMBOL_T:
+            free(head->name);
+            break;
+        case NUM_T:
+        case INT_T: case INT_ARR_T:
+        case CHAR_T: case CHAR_ARR_T:
+        case DOUBLE_T: case DOUBLE_ARR_T:
+            break;
+        case ENV_T: case LIST_T:
+            free_obj(head->list);
+            break;
+        case FUNC_T: case MACRO_T:
+            free_obj(head->param);
+            free_obj(head->body);
+            break;
+    }
+    if (head->next) free_obj(head->next);
+    free(head);
+}
+
+void free_objs(ssm_obj *head) {
+    if (head->type == LIST_T)
+        free_objs(head->list);
+    if (head->next)
+        free_objs(head->next);
+    free_obj(head);
+}
+
+// ==============================================
+// Environments
+// ==============================================
+
+ssm_obj *init_ssm_env() {
+    ssm_obj *env = calloc(1, sizeof(ssm_obj));
+    env->type = ENV_T;
+    return env;
+}
+
+index_t reserve_mem(index_t size, bool sys) {
+    int tape_no = sys * 2;
+    // Check memory of first tape
+    if (ENV_MX_S - 1 - max_arrptr[tape_no] < size)
+        tape_no++;
+    // Check memory of second tape
+    if (ENV_MX_S - 1 - max_arrptr[tape_no] < size)
+        LOG(ERROR, "Out of memory");
+    index_t ptr = max_arrptr[tape_no] + 1;
+    max_arrptr[tape_no] += size;
+    return ptr;
+}
+
+void add_env(ssm_obj **env) {
+    ssm_obj *newenv = calloc(1, sizeof(ssm_obj));
+    newenv->type = ENV_T;
+    newenv->next = *env;
+    *env = newenv;
+}
+
+void add_var(ssm_obj *env, ssm_obj *var) {
+    ssm_obj *next = env->list;
+    var->next = next;
+    env->list = var;
+}
+
+ssm_obj *sfind_var(ssm_obj *env, char *name) {
+    while (env) {
+        ssm_obj *var = env->list;
+        while (var) {
+            if (strcmp(name, var->name) == 0)
+                return var;
+            var = var->next;
+        }
+        env = env->next;
+    }
+    return NULL;
+}
+
+// Equivalent to `find' in minilisp. Probably useless
+ssm_obj *rfind_var(ssm_obj *env, ssm_obj *ref) {
+    while (env) {
+        ssm_obj *var = env->list;
+        while (var) {
+            if (var == ref)
+                return var;
+            var = var->next;
+        }
+        env = env->next;
+    }
+    return NULL;
+}
+
+void spit_insts(tape, char *insts);
+
+ssm_obj *eval(ssm_obj *obj, ssm_obj *env) {
+    switch (obj->type) {
+    case CHAR_T: case INT_T: case DOUBLE_T:
+    case CHAR_ARR_T: case INT_ARR_T: case DOUBLE_ARR_T:
+    case BUILTIN_T:
+    case FUNC_T:
+    case TRUE_T:
+    case NIL_T:
+        // Self-evaluating objects
+        return obj;
+    case SYMBOL_T: {
+        // Variable
+        ssm_obj *var = sfind_var(env, obj->name);
+        if (var == NULL)
+            LOG(ERROR, "Undefined variable: %s", var->name);
+        free_obj(obj);
+        return var;
+    }
+    case LIST_T: {
+        // Function application form
+        if (obj->type != LIST_T)
+            LOG(ERROR, "Function application must be a list.");
+        ssm_obj *func = obj->list;
+        ssm_obj *args = obj->list->next;
+
+        if (func->type != FUNC_T)
+            LOG(ERROR, "First member of the list is not a function: %s",
+                    func->name);
+        //*expanded = macroexpand(root, env, obj);
+        //if (*expanded != *obj)
+        //    return eval(root, env, expanded);
+        //*fn = (*obj)->car;
+        //*fn = eval(root, env, fn);
+        //*args = (*obj)->cdr;
+        //if ((*fn)->type != BUILTIN_T && (*fn)->type != TFUNCTION)
+        //    error("The head of a list must be a function");
+        return apply(func, args, env);
+    }
+    default:
+        LOG(ERROR, "Unknown type: %d", obj->type);
+    }
+}
+
+/* 
+ * === Builtin Functions ===
+ */
+
+// (init <type> <name>)
+ssm_builtin_func(init) {
+    ssm_obj *type = args->list;
+    ssm_obj *var = type->next;
+    var->type = NUM_T;
+    if (type->type != SYMBOL_T)
+        LOG(ERROR, "First argument for `init' is not of type SYMBOL");
+    if (strncmp(type->name, "int", 3) == 0) var->type = INT_T;
+    else if (strncmp(type->name, "char", 4) == 0) var->type = CHAR_T;
+    else if (strncmp(type->name, "double", 6) == 0) var->type = DOUBLE_T;
+    else LOG(ERROR, "Unknown type.");
+    //Variable addressing
+    var->ind = reserve_mem(1, true);
+
+    char *brac_start = strchr(type->name, '[');
+    char *brac_end = strchr(type->name, ']');
+    if (brac_start && brac_end && \
+            brac_end - type->name == strlen(type->name)) {
+        ssm_obj *region = calloc(1, sizeof(ssm_obj));
+        region->type = var->type + 3;
+        if (brac_end - brac_start == 1) {
+            region->size = 1;
+            LOG(WARNING, "No digit in []. Assuming size is 1.");
+        } else {
+            char *endptr;
+            region->size = strtol(brac_start + 1, &endptr, 10);
+            if (endptr != brac_end) {
+                if (*endptr == '.')
+                    LOG(WARNING, "Truncating float to integer for size.");
+                else
+                    LOG(ERROR, "Invalid size specifier.");
+            }
+        }
+        //TODO Create region variable
+        region->ind = reserve_mem(region->size, true);
+    }
+}
+
+// (setv name value)
+ssm_builtin_func(setv) {
+    ssm_obj *name = args->list;
+    ssm_obj *var = sfind_var(env, name->name);
+    if (var == NULL)
+        LOG(ERROR, "Variable `%s' not defined.", name->name);
+    ssm_obj *value;// = eval(name->next);
+    //TODO Manipulate tape
+    free_obj(name);
+    free_obj(value);
+    return value;
+}
+
+// (if cond conseq alt)
+ssm_builtin_func(if) {
+    ssm_obj *cond;// = eval(args->list);
+    ssm_obj *conseq = cond->next;
+    ssm_obj *alt = conseq->next;
+    ssm_obj *result = cond != NIL ? conseq : alt;
+    return result;//eval(result);
+}
+
+//(loop cond body)
+ssm_builtin_func(loop) {
+    ssm_obj *cond;// = eval(args->list);
+    ssm_obj *body = cond->next;
+    while (cond/*eval(cond)*/ != NIL) {
+        //eval(body);
+    }
+    return NIL;
+}
+
+//(at index type)
+//(mem index type)
+//(set index type value)
+//(+ val1 val2)
+//(- val1 val2)
+//(* val1 val2)
+//(/ val1 val2)
+//(% val1 val2)
+//(^ val1 val2)
+//(defun name arglist body)
+//(defun ref arglist body)
+//(call name arglist)
+//(call ref arglist)
+//(read len)
+//(read-char)
+//(write var)
+//(write-char char)
+//(write-str string)
+//(tonum value)
+//(random)
+//(return value)
+//(last-expr)
+//(last-val)
+//(exit value)
+//(add-to-last-tape value)
 
 void print_sslist(ssm_obj *item) {
     for (int i = 0; i < read_recur_count - 1; i ++)
@@ -332,8 +464,12 @@ int main() {
     puts("\n---------------------------------------------------\n");
     //PRINTINT(list->type);
     //PRINTLONG((long) list->list);
-    print_slist(list);
-    free_objs(list);
+    PRINTPTR(list);
+    if (list) {
+        PRINTPTR(list->list);
+        print_slist(list);
+        free_obj(list);
+    }
     //printf("%f\n", read_number(stream)->val);
     //ssm_obj *list = read_list(stream);
     //ssm_obj *ptr = list->list;
@@ -341,10 +477,17 @@ int main() {
     //    printf("<%s>\n", ptr->name);
     //    ptr = ptr->next;
     //}
-    //free_objs(list->list);
+    //free_obj(list->list);
     //free(list);
 
     close_stream(stream);
     free(buf);
+    return 0;
+}
+
+int ssm_main(int argc, char **argv) {
+    ssm_obj *env = init_ssm_env();
+    //def_builtins(env);
+    //eval();
     return 0;
 }

@@ -449,7 +449,7 @@ def bi_eval(oper, param, env, glob_env):
     elif oper == "#":
         if has_param: env.set_RP(param)
         else: return env.get_RP()
-    elif oper == "\\": env.set_val(int(env.get_val()))
+    elif oper == "\\": env.set_val(int(param or env.get_val()))
     elif oper == ":":
         #print("HAS PARAM::", has_param)
         #print("IN bi_eval::", param if has_param else env.get_val())
