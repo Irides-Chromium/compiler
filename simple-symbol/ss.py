@@ -345,7 +345,7 @@ def parse(expr, env, glob_env, structs=None):
             #print("SCAN EXPR::", expr[new_IP:])
             if expr[new_IP] == "(":
                 new_IP = structs[new_IP].get_index("end") + 1
-            else: new_IP = get_parsable_length(expr[new_IP:]) + new_IP
+            else: new_IP += get_parsable_length(expr[new_IP:])
             #print("DEBUG::", expr[IP:new_IP])
             struct = structs[IP]
             indexes = [i for i in struct.get_indexes() if i > -1]
