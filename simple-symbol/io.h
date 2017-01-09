@@ -44,7 +44,7 @@ void move_stream(stream_t *stream, int diff);
 long findch(stream_t *stream, char ch);
 long getpos(stream_t *stream);
 void setpos(stream_t *stream, long pos);
-int get_diff(stream_t *s1, stream_t *s2);
+//int get_diff(stream_t *s1, stream_t *s2);
 void close_stream(stream_t *stream);
 
 #endif /* _IO_H */

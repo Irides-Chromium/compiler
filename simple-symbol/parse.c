@@ -3,7 +3,7 @@
 ss_inst *init_inst(char type, char *expr) {
     ss_inst *self = malloc(sizeof(ss_inst));
     self->type = type;
-    strncpy(self->expr, expr, 16);
+    self->expr = expr;
 
     int branch_no;
     switch (type) {
@@ -15,11 +15,11 @@ ss_inst *init_inst(char type, char *expr) {
         default: branch_no = 1; break;
     }
     self->branch_no = branch_no;
-    self->indexes = malloc(branch_no * sizeof(ss_inst *));
+    self->indexes = calloc(branch_no, sizeof(ss_inst *));
     return self;
 }
 
-ss_inst *parse_until(stream_t *IP, char until) {
+ss_inst *parse_until(stream_t *stream, char until) {
     char start;
     switch (until) {
         case ')': start = '('; break;
@@ -27,54 +27,60 @@ ss_inst *parse_until(stream_t *IP, char until) {
         case '}': start = '{'; break;
     }
     int count = 1;
-    stream_t *new_IP = malloc(sizeof(stream_t));
-    *new_IP = *IP;
+    long IP, new_IP;
+    new_IP = IP = getpos(stream);
     while (count) {
-        char ch = getch(new_IP);
+        char ch = getch(stream);
         if (ch == start) count++;
         else if (ch == until) count--;
     }
-    int diff = get_diff(IP, new_IP) - 1;
-    stream_t *sub_stream = malloc(sizeof(stream_t));
-    sub_stream->stream.str = malloc(diff * sizeof(char));
-    getstr(new_IP, diff, sub_stream->stream.str);
-    free(new_IP);
-    return init_insts(sub_stream);  /* {expr} */
+    new_IP = getpos(stream);
+    int len = new_IP - IP - 1;
+    char *buf = calloc(len + 1, sizeof(char));
+    setpos(stream, IP);
+    getstr(stream, len, buf);
+    setpos(stream, new_IP);
+    stream_t *sub_stream = init_stream('s', buf);
+    ss_inst *expr = init_insts(sub_stream);  /* {expr} */
+    close_stream(sub_stream);
+    free(buf);
+    return expr;
 }
 
-ss_inst *init_insts(stream_t *IP) {
+ss_inst *init_insts(stream_t *stream) {
     char *buf;
     char type;
+    long IP, new_IP;
+    new_IP = IP = getpos(stream);
     ss_inst *head, *ptr;
-    stream_t *new_IP = malloc(sizeof(stream_t));
-    *new_IP = *IP;
+    ss_inst *indexes[4];
     head = ptr = malloc(sizeof(ss_inst));
-    l_list *stack = malloc(sizeof(l_list));
-    while (listench(IP)) {
-        buf = malloc(16 * sizeof(char));
-        ss_inst **indexes = malloc(4 * sizeof(ss_inst *));
-        getstr(new_IP, get_parsable_length(new_IP), buf);
-        if (buf[strlen(buf) - 1] == '(' && *buf == '?') {
+    while (listench(stream)) {
+        int len = get_parsable_length(stream);
+        buf = calloc(len + 1, sizeof(char));
+        getstr(stream, len, buf);
+        if (buf[len - 1] == '(' && *buf == '?') {
             type = '(';
-            indexes[1] = parse_until(IP, ')');
+            indexes[1] = parse_until(stream, ')');
         } else if (*buf == '[') {
             type = '[';
-            indexes[1] = parse_until(IP, ']');
+            indexes[1] = parse_until(stream, ']');
         } else if (*buf == '{') {
             type = '{';
-            indexes[1] = parse_until(IP, '}');
+            indexes[1] = parse_until(stream, '}');
         } else if (*buf == '?') {
             type = '?';
-            char iden = buf[strlen(buf) - 1];
+            char iden = buf[len - 1];
             if (iden == '(') {
-                indexes[1] = parse_until(IP, ')');  /* {expr} */
+                indexes[1] = parse_until(stream, ')');/* {expr} */
             } else if (strchr(RETN, iden)) {
-                move_stream(new_IP, 1);
-                new_IP += get_parsable_length(new_IP);
-                move_stream(new_IP, -1);
+                move_stream(stream, 1);
+                new_IP += get_parsable_length(stream);
+                move_stream(stream, -1);
             }
-            if (listench(new_IP) == '[') type = 'w';
-            move_stream(IP, get_diff(IP, new_IP) - 1);
+            if (listench(stream) == '[') type = 'w';
+            move_stream(stream, new_IP - IP - 1);
+            // TODO conseq & alt and loop body
         } else {
             type = 0;
         }
@@ -82,10 +88,27 @@ ss_inst *init_insts(stream_t *IP) {
         if (type) {
             for (int i = 1; i < indexes[0]->branch_no; i ++)
                 indexes[0]->indexes[i] = indexes[i];
-        move_stream(IP, get_diff(IP, new_IP) - 1);
+            move_stream(stream, new_IP - IP - 1);
         }
+        ptr->indexes[0] = indexes[0];
+        ptr = ptr->indexes[0];
     }
-    return head->indexes[0];
+    ss_inst *retn = head->indexes[0];
+    free_inst(head);
+    return retn;
+}
+
+void free_inst(ss_inst *obj) {
+    free(obj->expr);
+    free(obj->indexes);
+    free(obj);
+}
+
+void free_insts(ss_inst *obj) {
+    for (int i = 0; i < obj->branch_no; i ++)
+        if (obj->indexes[i])
+            free_insts(obj->indexes[i]);
+    free_inst(obj);
 }
 
 bool inst_has_mid(ss_inst *self) {
@@ -177,26 +200,24 @@ end:
  * @return: the maximum parsable length
  */
 
-int get_parsable_length(stream_t *IP) {
-    stream_t *old = malloc(sizeof(stream_t));
-    *old = *IP;
+int get_parsable_length(stream_t *stream) {
+    long IP, new_IP;
+    new_IP = IP = getpos(stream);
     int diff;
-    char buf[32] = "";
-    LOG(DEBUG, "next:: %u", listench(IP));
-    while (listench(IP)) {
-        diff = bi_parsable(IP);
-        LOG(INFO, "diff:: %d", get_diff(old, IP));
+    LOG(DEBUG, "next:: %u", listench(stream));
+    while (listench(stream)) {
+        diff = bi_parsable(stream);
         if (diff) {
             LOG(DEBUG, "inloop:: %d", diff);
         } else break;
     }
+    new_IP = getpos(stream);
+    int len = new_IP - IP - 1;
+    char *buf = calloc(len + 1, sizeof(char));
 
-    LOG(DEBUG, "diff:: %d", get_diff(old, IP));
-    getstr(old, get_diff(old, IP), buf);
-    for (int i = 0; i < 32; i ++)
-        printf("%d ", buf[i]);
-    puts("");
-    int len = strlen(buf);
+    setpos(stream, IP);
+    getstr(stream, len, buf);
+    setpos(stream, new_IP);
     int pars_len;
     regmatch_t *match = malloc(sizeof(regmatch_t));
     regex_t *pattern = malloc(sizeof(regex_t));
@@ -209,6 +230,5 @@ int get_parsable_length(stream_t *IP) {
     regfree(pattern);
     free(pattern);
     free(match);
-    free(old);
     return pars_len;
 }

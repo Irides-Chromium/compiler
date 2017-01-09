@@ -42,10 +42,8 @@ ss_inst *find_func(l_list *head, value_t ref) {
 
 /* Initializations & Deletions */
 ExprTape *init_expr() {
-    ExprTape *self = malloc(sizeof(ExprTape));
-    memset(self->tape, 0, sizeof(int) * 8);
+    ExprTape *self = calloc(1, sizeof(ExprTape));
     self->type = 'x';
-    self->RP = 0;
     return self;
 }
 
@@ -54,12 +52,9 @@ void destroy_expr(ExprTape *expr_tape) {
 }
 
 Env *init_env() {
-    Env *self = malloc(sizeof(Env));
-    memset(self->tape, 0, sizeof(int) * 4096);
-    memset(self->TPS, 0, sizeof(int) * 2);
-    memset(self->RPS, 0, sizeof(int) * 4);
+    Env *self = calloc(1, sizeof(Env));
     self->type = 'g';
-    self->func_ptr = self->FT = malloc(sizeof(l_list));
+    self->func_ptr = self->FT = calloc(1, sizeof(l_list));
     self->expr_tape = init_expr();
     return self;
 }
@@ -164,7 +159,7 @@ void move(void *self, int diff) {
 
 ExprTape *get_tape_right(void *self) {
     index_t start = get_RP(self, true);
-    ExprTape *tape = malloc(sizeof(ExprTape));
+    ExprTape *tape = init_expr();
     for (int i=0;i<8;i++) tape->tape[i] = get_val_index(self, start + i);
     return tape;
 }

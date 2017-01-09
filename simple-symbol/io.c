@@ -112,6 +112,7 @@ void setpos(stream_t *stream, long pos) {
     }
 }
 
+#if 0 /* DEPRECATED */
 int get_diff(stream_t *s1, stream_t *s2) {
     if (s1->type == 's' && s2->type == 's')
         return s2->str - s1->str;
@@ -120,13 +121,16 @@ int get_diff(stream_t *s1, stream_t *s2) {
     else
         LOG(ERROR, "Different types for ``get_diff'' @ %s %d", __FILE__, __LINE__);
 }
+#endif
 
 void close_stream(stream_t *stream) {
     if (stream->type == 's') {
         /* Hard to determine whether to free the buffer, free it outside the func. */
         //if (stream->str > (char *) 0x500000)
         //    free(stream->str);
-    } else
-        fclose(stream->file);
+    } else {
+        if (stream->file != stdin)
+            fclose(stream->file);
+    }
     free(stream);
 }
